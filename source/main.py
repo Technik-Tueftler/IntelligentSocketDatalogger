@@ -32,31 +32,33 @@ def fetch_shelly_data(device_name: str, settings: dict, env_data: dict):
                             password=env_data["db_user_password"],
                             ssl=env_data["ssl"],
                             verify_ssl=env_data["verify_ssl"])
-
     request_url = "http://" + settings["ip"] + "/status"
-    with urllib.request.urlopen(request_url) as url:
-        data = json.loads(url.read().decode())
-        device_data = [
-            {
-                "measurement": "census",
-                "tags": {
-                    "device": device_name
-                },
-                "time": datetime.utcnow(),
-                "fields": {
-                    "energy": data["meters"][0]["power"],
-                    "is_valid": data["meters"][0]["is_valid"],
-                    "device_temperature":data["temperature"]
+    try:
+        with urllib.request.urlopen(request_url) as url:
+            data = json.loads(url.read().decode())
+            device_data = [
+                {
+                    "measurement": "census",
+                    "tags": {
+                        "device": device_name
+                    },
+                    "time": datetime.utcnow(),
+                    "fields": {
+                        "energy": data["meters"][0]["power"],
+                        "is_valid": data["meters"][0]["is_valid"],
+                        "device_temperature":data["temperature"]
+                    }
                 }
-            }
-        ]
-        try:
+            ]
             client.switch_database(env_data["db_name"])
             client.write_points(device_data)
             client.close()
-        except InfluxDBClientError as err:
-            print(f"Error occurred during data saving with error message: {err}.")
-            # Add missing measurement to queue
+    except InfluxDBClientError as err:
+        print(f"Error occurred during data saving with error message: {err}.")
+        # Add missing measurement to queue
+    except urllib.error.URLError as err:
+        # logging File Eintrag hinzufügen und unter /files ablegen
+        print(f"Error occurred during data fetching from {device_name} with error message: {err}.")
 
 
 def check_and_verify_env_variables() -> dict:
