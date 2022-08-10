@@ -13,4 +13,4 @@ COPY files/ ./IntelligentSocketDatalogger/files/
 COPY source/ ./IntelligentSocketDatalogger/source/
 
 WORKDIR /user/app/IntelligentSocketDataLogger/source/
-CMD ["python", "-u", "./main.py"]
+CMD ["python", "-u", "main.py"]
