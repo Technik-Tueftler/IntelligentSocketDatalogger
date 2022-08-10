@@ -106,6 +106,7 @@ def main(env_data: dict) -> None:
     :param env_data: Dictionary with app information.
     :return: None
     """
+    # Check if file exist, if not close app with message
     with open("../files/devices.json", encoding="utf-8") as file:
         data = json.load(file)
     for device_name, settings in data.items():
@@ -122,3 +123,7 @@ if __name__ == "__main__":
     verified_env_data = check_and_verify_env_variables()
     if verified_env_data["all_verified"] is not False:
         main(verified_env_data)
+    else:
+        while True:
+            print("joa dann leg mal los")
+            time.sleep(5)
