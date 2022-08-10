@@ -1,6 +1,6 @@
 FROM python:3.10.6-buster
 
-ENV WORKING_DIR /user/app
+ENV WORKING_DIR /user/app/
 WORKDIR $WORKING_DIR
 
 COPY requirements.txt ./IntelligentSocketDatalogger/
@@ -9,7 +9,8 @@ RUN pip install -r ./IntelligentSocketDatalogger/requirements.txt
 RUN pip install schedule
 RUN pip install influxdb
 
-COPY files/ ./IntelligentSocketDatalogger/files
-COPY source/ ./IntelligentSocketDatalogger/source
+COPY files/ ./IntelligentSocketDatalogger/files/
+COPY source/ ./IntelligentSocketDatalogger/source/
 
-CMD ["python", "-u", "./IntelligentSocketDatalogger/source/main.py"]
+WORKDIR /user/app/IntelligentSocketDataLogger/source/
+CMD ["python", "-u", "./main.py"]
