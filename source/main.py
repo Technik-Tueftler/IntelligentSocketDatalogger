@@ -4,8 +4,6 @@
 Main function for cyclic call of all set devices and capture of the energy and the
 device temperature.
 """
-# pip install schedule
-# pip install influxdb
 import os
 import json
 import time
@@ -99,7 +97,7 @@ def check_and_verify_env_variables() -> dict:
               f"Check dokumentation for all environment variables")
         environment_data["all_verified"] = False
     finally:
-        return environment_data # pylint: disable=lost-exception
+        return environment_data  # pylint: disable=lost-exception
 
 
 def main(env_data: dict) -> None:
