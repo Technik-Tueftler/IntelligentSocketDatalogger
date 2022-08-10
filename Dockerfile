@@ -12,4 +12,6 @@ RUN pip install influxdb
 COPY files/ ./IntelligentSocketDatalogger/files/
 COPY source/ ./IntelligentSocketDatalogger/source/
 
-CMD ["python", "-u", "./IntelligentSocketDatalogger/source/main.py"]
+WORKDIR /user/app/IntelligentSocketDatalogger/source
+
+CMD ["python", "-u", "main.py"]
