@@ -5,6 +5,7 @@ Main function for cyclic call of all set devices and capture of the energy and t
 device temperature.
 """
 import os
+import sys
 import json
 import time
 import urllib.request
@@ -15,7 +16,7 @@ from influxdb.exceptions import InfluxDBClientError
 from requests.exceptions import ConnectTimeout
 
 
-def fetch_shelly_data(device_name: str, settings: dict, env_data: dict):
+def fetch_shelly_data(device_name: str, settings: dict, env_data: dict) -> None:
     """
     Call up data page of the transferred device. Save the energy and device
     temperature to an InfluxDB.
@@ -57,6 +58,11 @@ def fetch_shelly_data(device_name: str, settings: dict, env_data: dict):
     except urllib.error.URLError as err:
         # logging File Eintrag hinzufügen und unter /files ablegen
         print(f"Error occurred during data fetching from {device_name} with error message: {err}.")
+    except ConnectionError as err:
+        print(f"Error occurred during connecting to the database with error message: {err}. The "
+              f"service/app will be closed. Please check the environment variables for the "
+              f"connection to database")
+        sys.exit(0)
 
 
 def check_and_verify_env_variables() -> dict:
@@ -106,24 +112,27 @@ def main(env_data: dict) -> None:
     :param env_data: Dictionary with app information.
     :return: None
     """
-    # Check if file exist, if not close app with message
-    with open("../files/devices.json", encoding="utf-8") as file:
-        data = json.load(file)
-    for device_name, settings in data.items():
-        schedule.every(settings["update_time"]).seconds.do(fetch_shelly_data,
-                                                           device_name,
-                                                           settings,
-                                                           env_data)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    try:
+        # Check if file exist, if not close app with message
+        with open("../files/devices.json", encoding="utf-8") as file:
+            data = json.load(file)
+        for device_name, settings in data.items():
+            schedule.every(settings["update_time"]).seconds.do(fetch_shelly_data,
+                                                               device_name,
+                                                               settings,
+                                                               env_data)
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    except FileNotFoundError as err:
+        print(f"The configuration file for the devices could not be found. Please put it in the "
+              f"folder you passed with the environment variables. Error occurred during start the "
+              f"app with error message: {err}.")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
+    print("Start program")
     verified_env_data = check_and_verify_env_variables()
     if verified_env_data["all_verified"] is not False:
         main(verified_env_data)
-    else:
-        while True:
-            print("joa dann leg mal los")
-            time.sleep(5)
