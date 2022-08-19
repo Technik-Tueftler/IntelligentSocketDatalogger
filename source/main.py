@@ -43,9 +43,10 @@ def fetch_shelly_data(device_name: str, settings: dict, env_data: dict) -> None:
                     },
                     "time": datetime.utcnow(),
                     "fields": {
-                        "energy": data["meters"][0]["power"],
+                        "power": data["meters"][0]["power"],
                         "is_valid": data["meters"][0]["is_valid"],
-                        "device_temperature":data["temperature"]
+                        "device_temperature":data["temperature"],
+                        "energy_wh": data["meters"][0]["power"] * settings["update_time"] / 3600
                     }
                 }
             ]
