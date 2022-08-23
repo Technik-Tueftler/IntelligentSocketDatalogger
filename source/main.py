@@ -10,7 +10,6 @@ import time
 import urllib.request
 from datetime import datetime
 import schedule
-from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 import support_functions
 
@@ -23,36 +22,28 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
     :param settings: Settings of the transferred device
     :return: None
     """
-    client = InfluxDBClient(
-        host=connection.db_ip_address,
-        port=connection.db_port,
-        username=connection.db_user_name,
-        password=connection.db_user_password,
-        ssl=connection.ssl,
-        verify_ssl=connection.verify_ssl,
-    )
     request_url = "http://" + settings["ip"] + "/status"
     try:
-        with urllib.request.urlopen(request_url) as url:
-            data = json.loads(url.read().decode())
-            device_data = [
-                {
-                    "measurement": "census",
-                    "tags": {"device": device_name},
-                    "time": datetime.utcnow(),
-                    "fields": {
-                        "power": data["meters"][0]["power"],
-                        "is_valid": data["meters"][0]["is_valid"],
-                        "device_temperature": data["temperature"],
-                        "energy_wh": data["meters"][0]["power"]
-                        * settings["update_time"]
-                        / 3600,
-                    },
-                }
-            ]
-            client.switch_database(connection.db_name)
-            client.write_points(device_data)
-            client.close()
+        with support_functions.InfluxDBConnection(login_information=login_information) as conn:
+            with urllib.request.urlopen(request_url) as url:
+                data = json.loads(url.read().decode())
+                device_data = [
+                    {
+                        "measurement": "census",
+                        "tags": {"device": device_name},
+                        "time": datetime.utcnow(),
+                        "fields": {
+                            "power": data["meters"][0]["power"],
+                            "is_valid": data["meters"][0]["is_valid"],
+                            "device_temperature": data["temperature"],
+                            "energy_wh": data["meters"][0]["power"]
+                            * settings["update_time"]
+                            / 3600,
+                        },
+                    }
+                ]
+                conn.client.switch_database(login_information.db_name)
+                conn.client.write_points(device_data)
     except InfluxDBClientError as err:
         print(f"Error occurred during data saving with error message: {err}.")
         # Add missing measurement to queue
@@ -98,7 +89,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     print("Start program")
-    connection = support_functions.DataApp()
-    support_functions.check_and_verify_db_connection(connection)
-    if connection.verified is not False:
+    login_information = support_functions.DataApp()
+    support_functions.check_and_verify_db_connection(login_information)
+    if login_information.verified is not False:
         main()

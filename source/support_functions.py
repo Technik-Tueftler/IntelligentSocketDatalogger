@@ -60,28 +60,42 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
         print(err)
 
 
-def check_and_verify_db_connection(connection: DataApp) -> None:
+class InfluxDBConnection:
+    """
+    InluxDB connection class for handling in context manager
+    """
+    def __init__(self, login_information: DataApp):
+        login_information: DataApp
+        self.client = InfluxDBClient(
+            host=login_information.db_ip_address,
+            port=login_information.db_port,
+            username=login_information.db_user_name,
+            password=login_information.db_user_password,
+            ssl=login_information.ssl,
+            verify_ssl=login_information.verify_ssl,
+        )
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.client.close()
+
+
+def check_and_verify_db_connection(login_information: DataApp) -> None:
     """Function controls the passed env variables and checks if they are valid."""
     try:
-        client = InfluxDBClient(
-            host=connection.db_ip_address,
-            port=connection.db_port,
-            username=connection.db_user_name,
-            password=connection.db_user_password,
-            ssl=connection.ssl,
-            verify_ssl=connection.verify_ssl,
-        )
-        client.ping()
-        client.switch_database(connection.db_name)
-        client.close()
-        connection.all_verified = True
+        with InfluxDBConnection(login_information=login_information) as connection:
+            connection.client.ping()
+            connection.client.switch_database(login_information.db_name)
+            login_information.all_verified = True
     except (InfluxDBClientError, ConnectTimeout) as err:
         print(
             f"Error occurred during setting the database with error message: {err}. All login"
             f"information correct? Like database address, user name and so on? "
             f"Check dokumentation for all environment variables"
         )
-        connection.all_verified = False
+        login_information.all_verified = False
 
 
 def main() -> None:
