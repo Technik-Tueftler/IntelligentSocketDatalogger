@@ -7,11 +7,46 @@ device temperature.
 import sys
 import json
 import time
+import logging
 import urllib.request
 from datetime import datetime
+from dataclasses import dataclass
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 import support_functions
+
+
+@dataclass
+class LogLevel:
+    """
+    Configuration class for reding the logging level and provide to application.
+    """
+
+    log_levels = {
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+        "critical": logging.CRITICAL,
+    }
+    config_level: str = logging.CRITICAL
+    with open("../files/config.json", encoding="utf-8") as file:
+        general_config = json.load(file)["general"]
+        if "log_level" in general_config:
+            temp_level = general_config["log_level"]
+            config_level = log_levels[temp_level]
+
+
+program_logging_level = LogLevel()
+logging.basicConfig(
+    filename="../files/main.log",
+    encoding="utf-8",
+    filemode="a",
+    level=program_logging_level.config_level,
+    format="%(asctime)s: %(levelname)s - %(message)s",
+    datefmt="%d-%b-%y %H:%M:%S",
+)
+logging.Formatter.converter = time.gmtime
 
 
 def fetch_shelly_data(device_name: str, settings: dict) -> None:
@@ -24,7 +59,9 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
     """
     request_url = "http://" + settings["ip"] + "/status"
     try:
-        with support_functions.InfluxDBConnection(login_information=login_information) as conn:
+        with support_functions.InfluxDBConnection(
+            login_information=login_information
+        ) as conn:
             with urllib.request.urlopen(request_url) as url:
                 data = json.loads(url.read().decode())
                 device_data = [
@@ -46,6 +83,7 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
                 conn.client.write_points(device_data)
     except InfluxDBClientError as err:
         print(f"Error occurred during data saving with error message: {err}.")
+
         # Add missing measurement to queue
     except urllib.error.URLError as err:
         # logging File Eintrag hinzufügen und unter /files ablegen
@@ -57,6 +95,10 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
             f"Error occurred during connecting to the database with error message: {err}. The "
             f"service/app will be closed. Please check the environment variables for the "
             f"connection to database"
+        )
+        logging.error(
+            "Error occurred during connecting to the database with error message: %s",
+            err,
         )
         sys.exit(0)
 
@@ -84,11 +126,15 @@ def main() -> None:
             f"folder you passed with the environment variables. Error occurred during start the "
             f"app with error message: {err}."
         )
+        logging.error(
+            "The configuration file for the devices could not be found: %s", err
+        )
         sys.exit(0)
 
 
 if __name__ == "__main__":
-    print("Start program")
+    print(f"Start Program: {datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')}")
+    logging.debug("Start Program: %s", datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
     login_information = support_functions.DataApp()
     support_functions.check_and_verify_db_connection(login_information)
     if login_information.verified is not False:
