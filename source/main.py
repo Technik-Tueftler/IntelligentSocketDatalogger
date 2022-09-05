@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 import support_functions
+import cost_calculation as cc
 
 
 @dataclass
@@ -79,8 +80,8 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
                         },
                     }
                 ]
-                conn.client.switch_database(login_information.db_name)
-                conn.client.write_points(device_data)
+                conn.switch_database(login_information.db_name)
+                conn.write_points(device_data)
     except InfluxDBClientError as err:
         print(f"Error occurred during data saving with error message: {err}.")
 
@@ -111,12 +112,21 @@ def main() -> None:
     """
     try:
         # Check if file exist, if not close app with message
+        # Check if ip and update_time
         with open("../files/devices.json", encoding="utf-8") as file:
             data = json.load(file)
         for device_name, settings in data.items():
-            schedule.every(settings["update_time"]).seconds.do(
-                fetch_shelly_data, device_name, settings
-            )
+            if "ip" in settings and "update_time" in settings:
+                schedule.every(settings["update_time"]).seconds.do(
+                    fetch_shelly_data, device_name, settings
+                )
+            if cc.check_cost_day_requested(settings):
+                schedule.every().day.at(settings["cost_day"]).do(
+                    cc.calc_day_cost, device_name, login_information
+                )
+            # if cc.check_cost_month_year_requested(settings):
+            #    schedule.every().day.at(settings["00:00"]).do(cc.calc_month_year_cost, device_name)
+
         while True:
             schedule.run_pending()
             time.sleep(1)
@@ -133,9 +143,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    print(f"Start Program: {datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')}")
+    print(f"Start Program: {datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')} UTC")
     logging.debug("Start Program: %s", datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
     login_information = support_functions.DataApp()
     support_functions.check_and_verify_db_connection(login_information)
     if login_information.verified is not False:
         main()
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)

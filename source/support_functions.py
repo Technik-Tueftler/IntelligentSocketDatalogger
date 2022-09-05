@@ -60,13 +60,14 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
         print(err)
 
 
-class InfluxDBConnection:
+class InfluxDBConnection(InfluxDBClient):
     """
-    InluxDB connection class for handling in context manager
+    InfluxDB connection class for handling in context manager
     """
+
     def __init__(self, login_information: DataApp):
-        login_information: DataApp
-        self.client = InfluxDBClient(
+        self.login_information = login_information
+        super().__init__(
             host=login_information.db_ip_address,
             port=login_information.db_port,
             username=login_information.db_user_name,
@@ -78,16 +79,13 @@ class InfluxDBConnection:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.client.close()
-
 
 def check_and_verify_db_connection(login_information: DataApp) -> None:
     """Function controls the passed env variables and checks if they are valid."""
     try:
         with InfluxDBConnection(login_information=login_information) as connection:
-            connection.client.ping()
-            connection.client.switch_database(login_information.db_name)
+            connection.ping()
+            connection.switch_database(login_information.db_name)
             login_information.all_verified = True
     except (InfluxDBClientError, ConnectTimeout) as err:
         print(
