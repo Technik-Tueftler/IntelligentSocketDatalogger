@@ -63,34 +63,45 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
         with support_functions.InfluxDBConnection(
             login_information=login_information
         ) as conn:
-            with urllib.request.urlopen(request_url) as url:
-                data = json.loads(url.read().decode())
+            device_data = []
+            try:
+                with urllib.request.urlopen(request_url) as url:
+                    data = json.loads(url.read().decode())
+                    device_data = [
+                        {
+                            "measurement": "census",
+                            "tags": {"device": device_name},
+                            "time": datetime.utcnow(),
+                            "fields": {
+                                "power": data["meters"][0]["power"],
+                                "is_valid": data["meters"][0]["is_valid"],
+                                "device_temperature": data["temperature"],
+                                "fetch_success": True,
+                                "energy_wh": data["meters"][0]["power"]
+                                * settings["update_time"]
+                                / 3600,
+                            },
+                        }
+                    ]
+            except urllib.error.URLError as err:
+                print(
+                    f"Error occurred during data fetching from "
+                    f"{device_name} with error message: {err}."
+                )
                 device_data = [
                     {
                         "measurement": "census",
                         "tags": {"device": device_name},
                         "time": datetime.utcnow(),
-                        "fields": {
-                            "power": data["meters"][0]["power"],
-                            "is_valid": data["meters"][0]["is_valid"],
-                            "device_temperature": data["temperature"],
-                            "energy_wh": data["meters"][0]["power"]
-                            * settings["update_time"]
-                            / 3600,
-                        },
+                        "fields": {"fetch_success": False},
                     }
                 ]
+            finally:
                 conn.switch_database(login_information.db_name)
                 conn.write_points(device_data)
     except InfluxDBClientError as err:
         print(f"Error occurred during data saving with error message: {err}.")
-
         # Add missing measurement to queue
-    except urllib.error.URLError as err:
-        # logging File Eintrag hinzufügen und unter /files ablegen
-        print(
-            f"Error occurred during data fetching from {device_name} with error message: {err}."
-        )
     except ConnectionError as err:
         print(
             f"Error occurred during connecting to the database with error message: {err}. The "
@@ -149,7 +160,3 @@ if __name__ == "__main__":
     support_functions.check_and_verify_db_connection(login_information)
     if login_information.verified is not False:
         main()
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
