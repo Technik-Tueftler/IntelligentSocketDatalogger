@@ -1,6 +1,6 @@
 {
   "general":
   {
-
+    "log_level": "debug"
   }
 }
