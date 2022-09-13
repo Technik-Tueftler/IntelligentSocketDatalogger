@@ -27,7 +27,7 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
     try:
         if None in (db_ip_address, db_user_name, db_user_password, db_name):
             raise ValueError(
-                "Not all env variable are defined. Please check the documentation and "
+                "Not all needed env variable are defined. Please check the documentation and "
                 "add all necessary login information."
             )
         db_port = os.getenv("DB_PORT")

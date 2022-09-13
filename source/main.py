@@ -67,6 +67,8 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
             try:
                 with urllib.request.urlopen(request_url) as url:
                     data = json.loads(url.read().decode())
+                    # Jedes Tag abfragen, ob es wirklich vorhanden ist und nur dann eintragen. So
+                    # könnten mehr Steckdosen unterstützt werden.
                     device_data = [
                         {
                             "measurement": "census",
