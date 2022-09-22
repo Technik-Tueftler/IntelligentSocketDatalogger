@@ -126,19 +126,23 @@ def main() -> None:
     try:
         # Check if file exist, if not close app with message
         # Check if ip and update_time
+        data = {}
         with open("../files/devices.json", encoding="utf-8") as file:
             data = json.load(file)
+        request_start_time = cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
             if "ip" in settings and "update_time" in settings:
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_shelly_data, device_name, settings
                 )
-            if cc.check_cost_day_requested(settings):
-                schedule.every().day.at(settings["cost_day"]).do(
-                    cc.calc_day_cost, device_name, login_information
+            cost_calc_requested = cc.check_cost_calc_requested(settings)
+            if cost_calc_requested["start_schedule_task"] is True:
+                schedule.every().day.at(request_start_time).do(
+                    cc.cost_calc_handler,
+                    device_name,
+                    login_information,
+                    cost_calc_requested,
                 )
-            # if cc.check_cost_month_year_requested(settings):
-            #    schedule.every().day.at(settings["00:00"]).do(cc.calc_month_year_cost, device_name)
 
         while True:
             schedule.run_pending()
