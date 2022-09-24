@@ -140,6 +140,7 @@ def main() -> None:
                 schedule.every().day.at(request_start_time).do(
                     cc.cost_calc_handler,
                     device_name,
+                    settings,
                     login_information,
                     cost_calc_requested,
                 )

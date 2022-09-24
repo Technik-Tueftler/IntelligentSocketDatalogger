@@ -96,6 +96,37 @@ def check_and_verify_db_connection(login_information: DataApp) -> None:
         login_information.all_verified = False
 
 
+def cost_logging(file_name: str, data: dict) -> None:
+    """
+
+    :param file_name:
+    :param data: information for logging
+    :return:
+    """
+
+    if not os.path.exists(os.path.join("..", "files", file_name + ".txt")):
+        with open(
+                os.path.join("..", "files", file_name + ".txt"), "a", encoding="utf-8"
+        ) as file:
+            file.write("|               Period in UTC               | consumption in KWh |         Costs          |  Error rate in %  |\n")
+            file.write("|-------------------------------------------|--------------------|------------------------|-------------------|\n")
+
+    checked_total_cost = round(data['total_cost'], 2)
+    if data['cost_kwh'] >= 10:
+        checked_cost_kwh = "9.99+"
+    else:
+        checked_cost_kwh = round(data['cost_kwh'], 3)
+    checked_error_rate_one = min(100.0, round(data['error_rate_one'], 1))
+    checked_error_rate_two = min(100.0, round(data['error_rate_two'], 1))
+
+    with open(
+            os.path.join("..", "files", file_name + ".txt"), "a", encoding="utf-8"
+    ) as file:
+        file.write(
+            f"| {data['start_date']} - {data['end_date']} |{data['sum_of_energy']:>19} |{checked_total_cost:>10} ({checked_cost_kwh:>4}€/KWh) |{checked_error_rate_one:>8} |{checked_error_rate_two:>8} |\n"
+        )
+
+
 def main() -> None:
     """
     Scheduling function for regular call.
