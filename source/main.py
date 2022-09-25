@@ -60,9 +60,7 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
     """
     request_url = "http://" + settings["ip"] + "/status"
     try:
-        with support_functions.InfluxDBConnection(
-            login_information=login_information
-        ) as conn:
+        with support_functions.InfluxDBConnection() as conn:
             device_data = []
             try:
                 with urllib.request.urlopen(request_url) as url:
@@ -99,7 +97,7 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
                     }
                 ]
             finally:
-                conn.switch_database(login_information.db_name)
+                conn.switch_database(support_functions.login_information.db_name)
                 conn.write_points(device_data)
     except InfluxDBClientError as err:
         print(f"Error occurred during data saving with error message: {err}.")
@@ -141,7 +139,6 @@ def main() -> None:
                     cc.cost_calc_handler,
                     device_name,
                     settings,
-                    login_information,
                     cost_calc_requested,
                 )
 
@@ -163,7 +160,5 @@ def main() -> None:
 if __name__ == "__main__":
     print(f"Start Program: {datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')} UTC")
     logging.debug("Start Program: %s", datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
-    login_information = support_functions.DataApp()
-    support_functions.check_and_verify_db_connection(login_information)
-    if login_information.verified is not False:
+    if support_functions.login_information.verified is not False:
         main()

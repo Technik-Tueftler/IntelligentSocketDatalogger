@@ -82,7 +82,6 @@ def check_cost_config() -> float:
 def cost_calc(
     device_name: str,
     settings: dict,
-    login_information: sf.DataApp,
     current_timestamp: datetime,
     time_difference: relativedelta,
 ) -> None:
@@ -90,7 +89,6 @@ def cost_calc(
     Calculate the monthly cost for a specific device.
     :param device_name: Name of the device
     :param settings: device parameters
-    :param login_information: Login information to connect with the InfluxDB
     :param current_timestamp: Now date and time from request
     :param time_difference: needed time difference for calculation
     :return: None
@@ -100,59 +98,52 @@ def cost_calc(
     end_date = current_timestamp
     end_date_format = end_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    with sf.InfluxDBConnection(login_information=login_information) as conn:
-        query = (
-            f'SELECT * FROM {conn.login_information.db_name}."autogen"."census" '
-            f"WHERE device=$device AND time > $target_date AND time < $current_date"
-        )
-        bind_params = {
+    result = sf.fetch_measurements(
+        {
             "device": device_name,
             "target_date": start_date_format,
             "current_date": end_date_format,
         }
-        result = conn.query(query, bind_params=bind_params)
+    )
 
-        success_measurements = list(
-            filter(
-                lambda measurement: measurement["fetch_success"] is True,
-                result.get_points(),
-            )
+    success_measurements = list(
+        filter(
+            lambda measurement: measurement["fetch_success"] is True,
+            result.get_points(),
         )
+    )
+    failed_measurements = list(
+        filter(
+            lambda measurement: measurement["fetch_success"] is False,
+            result.get_points(),
+        )
+    )
+    sum_of_energy_in_kwh = round(
+        (sum(element["energy_wh"] for element in success_measurements) / 1000), 2
+    )
+    cost_kwh = check_cost_config()
+    if (len(success_measurements) + len(failed_measurements)) == 0:
+        return
+    max_values = ((end_date - start_date).total_seconds()) / settings["update_time"]
 
-        failed_measurements = list(
-            filter(
-                lambda measurement: measurement["fetch_success"] is False,
-                result.get_points(),
-            )
-        )
-        sum_of_energy_in_kwh = round(
-            (sum(element["energy_wh"] for element in success_measurements) / 1000), 2
-        )
-        cost_kwh = check_cost_config()
-        count_measurements = len(success_measurements) + len(failed_measurements)
-        if count_measurements == 0:
-            return
-        sum_of_sec = (end_date - start_date).total_seconds()
-        max_values = sum_of_sec / settings["update_time"]
-
-        data = {
-            "start_date": start_date_format,
-            "end_date": end_date_format,
-            "sum_of_energy": sum_of_energy_in_kwh,
-            "total_cost": sum_of_energy_in_kwh * cost_kwh,
-            "cost_kwh": cost_kwh,
-            "error_rate_one": len(failed_measurements) * 100 / count_measurements,
-            "error_rate_two": (max_values - len(success_measurements))
-            * 100
-            / max_values,
-        }
-        if time_difference.days == 1:
-            sf.cost_logging(device_name + "_day", data)
-        elif time_difference.months == 1:
-            sf.cost_logging(device_name + "_month", data)
-        elif time_difference.years == 1:
-            sf.cost_logging(device_name + "_year", data)
-        # Logging-Eintrag erstellen, dass keine Summe berechnet werden konnte
+    data = {
+        "start_date": start_date_format,
+        "end_date": end_date_format,
+        "sum_of_energy": sum_of_energy_in_kwh,
+        "total_cost": sum_of_energy_in_kwh * cost_kwh,
+        "cost_kwh": cost_kwh,
+        "error_rate_one": len(failed_measurements)
+        * 100
+        / (len(success_measurements) + len(failed_measurements)),
+        "error_rate_two": (max_values - len(success_measurements)) * 100 / max_values,
+    }
+    if time_difference.days == 1:
+        sf.cost_logging(device_name + "_day", data)
+    elif time_difference.months == 1:
+        sf.cost_logging(device_name + "_month", data)
+    elif time_difference.years == 1:
+        sf.cost_logging(device_name + "_year", data)
+    # Logging-Eintrag erstellen, dass keine Summe berechnet werden konnte
 
 
 def check_cost_calc_requested(settings: dict) -> dict:
@@ -184,14 +175,12 @@ def check_cost_calc_requested(settings: dict) -> dict:
 def cost_calc_handler(
     device_name: str,
     settings: dict,
-    login_information: sf.DataApp,
     cost_calc_requested: dict,
 ) -> None:
     """
     Check with costs are requested and call the correct calculations.
     :param device_name: Name of the device
     :param settings: device parameters
-    :param login_information: Login information to connect with the InfluxDB
     :param cost_calc_requested: Structure which calculations are requested
     :return: None
     """
@@ -200,7 +189,6 @@ def cost_calc_handler(
         cost_calc(
             device_name,
             settings,
-            login_information,
             current_timestamp,
             relativedelta(days=1),
         )
@@ -208,7 +196,6 @@ def cost_calc_handler(
         cost_calc(
             device_name,
             settings,
-            login_information,
             current_timestamp,
             relativedelta(months=1),
         )
@@ -216,7 +203,6 @@ def cost_calc_handler(
         cost_calc(
             device_name,
             settings,
-            login_information,
             current_timestamp,
             relativedelta(years=1),
         )
@@ -227,7 +213,6 @@ def main() -> None:
     Scheduling function for regular call.
     :return: None
     """
-    login_information = sf.DataApp()
     data = {
         "ip": "192.168.178.200",
         "update_time": 30,
@@ -238,9 +223,8 @@ def main() -> None:
     cost_calc(
         "Kuehlschrank",
         data,
-        login_information,
         datetime.utcnow(),
-        relativedelta(days=1),
+        relativedelta(years=1),
     )
 
 
