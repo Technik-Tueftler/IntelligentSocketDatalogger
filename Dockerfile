@@ -8,6 +8,7 @@ COPY requirements.txt ./
 RUN pip install -r requirements.txt
 RUN pip install schedule
 RUN pip install influxdb
+RUN pip install python-dateutil
 
 COPY files/ ./files/
 COPY source/ ./source/

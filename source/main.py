@@ -60,13 +60,13 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
     """
     request_url = "http://" + settings["ip"] + "/status"
     try:
-        with support_functions.InfluxDBConnection(
-            login_information=login_information
-        ) as conn:
+        with support_functions.InfluxDBConnection() as conn:
             device_data = []
             try:
                 with urllib.request.urlopen(request_url) as url:
                     data = json.loads(url.read().decode())
+                    # Jedes Tag abfragen, ob es wirklich vorhanden ist und nur dann eintragen. So
+                    # könnten mehr Steckdosen unterstützt werden.
                     device_data = [
                         {
                             "measurement": "census",
@@ -97,7 +97,7 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
                     }
                 ]
             finally:
-                conn.switch_database(login_information.db_name)
+                conn.switch_database(support_functions.login_information.db_name)
                 conn.write_points(device_data)
     except InfluxDBClientError as err:
         print(f"Error occurred during data saving with error message: {err}.")
@@ -124,19 +124,23 @@ def main() -> None:
     try:
         # Check if file exist, if not close app with message
         # Check if ip and update_time
+        data = {}
         with open("../files/devices.json", encoding="utf-8") as file:
             data = json.load(file)
+        request_start_time = cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
             if "ip" in settings and "update_time" in settings:
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_shelly_data, device_name, settings
                 )
-            if cc.check_cost_day_requested(settings):
-                schedule.every().day.at(settings["cost_day"]).do(
-                    cc.calc_day_cost, device_name, login_information
+            cost_calc_requested = cc.check_cost_calc_requested(settings)
+            if cost_calc_requested["start_schedule_task"] is True:
+                schedule.every().day.at(request_start_time).do(
+                    cc.cost_calc_handler,
+                    device_name,
+                    settings,
+                    cost_calc_requested,
                 )
-            # if cc.check_cost_month_year_requested(settings):
-            #    schedule.every().day.at(settings["00:00"]).do(cc.calc_month_year_cost, device_name)
 
         while True:
             schedule.run_pending()
@@ -156,7 +160,5 @@ def main() -> None:
 if __name__ == "__main__":
     print(f"Start Program: {datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')} UTC")
     logging.debug("Start Program: %s", datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
-    login_information = support_functions.DataApp()
-    support_functions.check_and_verify_db_connection(login_information)
-    if login_information.verified is not False:
+    if support_functions.login_information.verified is not False:
         main()

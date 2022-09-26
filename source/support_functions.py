@@ -5,6 +5,7 @@ Collection of support function for main app with definition of classes and verif
 """
 from dataclasses import dataclass
 import os
+import influxdb.resultset
 from requests.exceptions import ConnectTimeout
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
@@ -27,7 +28,7 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
     try:
         if None in (db_ip_address, db_user_name, db_user_password, db_name):
             raise ValueError(
-                "Not all env variable are defined. Please check the documentation and "
+                "Not all needed env variable are defined. Please check the documentation and "
                 "add all necessary login information."
             )
         db_port = os.getenv("DB_PORT")
@@ -62,10 +63,10 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
 
 class InfluxDBConnection(InfluxDBClient):
     """
-    InfluxDB connection class for handling in context manager
+    InfluxDB's connection class for handling in context manager
     """
 
-    def __init__(self, login_information: DataApp):
+    def __init__(self):
         self.login_information = login_information
         super().__init__(
             host=login_information.db_ip_address,
@@ -80,20 +81,77 @@ class InfluxDBConnection(InfluxDBClient):
         return self
 
 
-def check_and_verify_db_connection(login_information: DataApp) -> None:
+def check_and_verify_db_connection() -> None:
     """Function controls the passed env variables and checks if they are valid."""
     try:
-        with InfluxDBConnection(login_information=login_information) as connection:
+        with InfluxDBConnection() as connection:
             connection.ping()
             connection.switch_database(login_information.db_name)
-            login_information.all_verified = True
+            login_information.verified = True
     except (InfluxDBClientError, ConnectTimeout) as err:
         print(
             f"Error occurred during setting the database with error message: {err}. All login"
             f"information correct? Like database address, user name and so on? "
             f"Check dokumentation for all environment variables"
         )
-        login_information.all_verified = False
+        login_information.verified = False
+
+
+def cost_logging(file_name: str, data: dict) -> None:
+    """
+
+    :param file_name:
+    :param data: information for logging
+    :return:
+    """
+
+    if not os.path.exists(os.path.join("..", "files", file_name + ".txt")):
+        with open(
+            os.path.join("..", "files", file_name + ".txt"), "a", encoding="utf-8"
+        ) as file:
+            file.write(
+                "|               Period in UTC               |"
+                " consumption in KWh |         Costs          |  Error rate in %  |\n"
+            )
+            file.write(
+                "|-------------------------------------------|"
+                "--------------------|------------------------|-------------------|\n"
+            )
+
+    checked_total_cost = round(data["total_cost"], 2)
+    if data["cost_kwh"] >= 10:
+        checked_cost_kwh = "9.99+"
+    else:
+        checked_cost_kwh = round(data["cost_kwh"], 3)
+    checked_error_rate_one = min(100.0, round(data["error_rate_one"], 1))
+    checked_error_rate_two = min(100.0, round(data["error_rate_two"], 1))
+
+    with open(
+        os.path.join("..", "files", file_name + ".txt"), "a", encoding="utf-8"
+    ) as file:
+        file.write(
+            f"| {data['start_date']} - {data['end_date']} |{data['sum_of_energy']:>19} |"
+            f"{checked_total_cost:>10} ({checked_cost_kwh:>4}€/KWh) |{checked_error_rate_one:>8} |"
+            f"{checked_error_rate_two:>8} |\n"
+        )
+
+
+def fetch_measurements(bind_params: dict) -> influxdb.resultset.ResultSet:
+    """
+    Fetch measurements with transferred query parameters.
+    :param bind_params: Parameters for query
+    :return: All measurements which are matched tp parameters as a ResultSet
+    """
+    with InfluxDBConnection() as conn:
+        query = (
+            f'SELECT * FROM {conn.login_information.db_name}."autogen"."census" '
+            f"WHERE device=$device AND time > $target_date AND time < $current_date"
+        )
+        return conn.query(query, bind_params=bind_params)
+
+
+login_information = DataApp()
+check_and_verify_db_connection()
 
 
 def main() -> None:
