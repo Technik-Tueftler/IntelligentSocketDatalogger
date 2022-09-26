@@ -212,7 +212,7 @@ def check_cost_calc_requested(settings: dict) -> dict:
     return start_schedule_task
 
 
-def check_matched_day(current_date: datetime.datetime, target_day: int) -> bool:
+def check_matched_day(current_date: datetime, target_day: int) -> bool:
     """
     Checks if the current day matches the set day. In addition, if the set day is not possible,
     the last day in this month is checked.
@@ -231,7 +231,7 @@ def check_matched_day(current_date: datetime.datetime, target_day: int) -> bool:
 
 
 def check_matched_day_and_month(
-    current_date: datetime.datetime, target_day: int, target_month: int
+    current_date: datetime, target_day: int, target_month: int
 ) -> bool:
     """
     Checks if the current day and month matches the set date. In addition, if the set day is not
