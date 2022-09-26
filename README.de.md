@@ -55,11 +55,15 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
 {
   "general":
   {
-    "log_level": "info"
+    "log_level": "info",
+    "cost_calc_request_time": "00:00",
+    "price_kwh": 0.296
   }
 }
 ````
-`log_level:` Protokollierungslevel für das Projekt. Mögliche Einstellungen: *debug, info, warning, error, critical*
+`log_level:` Protokollierungslevel für das Projekt. Mögliche Einstellungen: *debug, info, warning, error, critical*  
+`cost_calc_request_time:` Gib die Uhrzeit an, zu dem die Kostenkalkulierung startet. Dieser Parameter gilt für alle Berechnungen. Die Standarduhrzeit ist 00:00 Uhr. 
+`price_kwh:` Gibt den Preis pro Kilowattstunde an. Der Standardwert ist 0.30€.  
 
 ### devices.json
 ````commandline 
@@ -68,16 +72,20 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
   {
     "ip": "192.168.178.200",
     "update_time": 10,
-    "cost_day": "00:00"
+    "cost_calc_month": "01",
+    "cost_calc_year": "01.01"
   },
   "Herd":
   {
     "ip": "192.168.178.201",
     "update_time": 30
+    "cost_calc_day": true,
   }
 }
 ````
 `Waschmaschine:` Gerätename, welcher aufgezeichnet wird.  
 `ip:` IP-Adresse im verbundenen Netzwerk  
 `update_time:` Aktualisierungszeit in welchem Abstand neue Daten abgefragt werden sollen. Angabe ist in `Sekunden`.  
-`cost_day:` Aktiviert das Feature, dass einmal am Tag die gesamten Kosten und die Arbeit des Gerätes für die letzten 24 Stunden abgelegt werden. Eingestellt wird hier der Zeitpunkt, wann der Prozess starten soll. Die Formatierung ist: `HH:MM`. Es wird auch angegeben, wie viele Messwerte fehlen für eine Einschätzung, welche Güte der Wert hat. Die Uhrzeit ist abhängig von der Einstellung auf dem Server.    
+`cost_calc_day:` Aktiviert das Feature, dass einmal am Tag die gesamten Kosten und die Arbeit des Gerätes für die letzten 24 Stunden abgelegt werden.  
+`cost_calc_month:` Aktiviert das Feature, dass einmal im Monat die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag im Monat.  
+`cost_calc_year:` Aktiviert das Feature, dass einmal im Jahr die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag und Monat.  

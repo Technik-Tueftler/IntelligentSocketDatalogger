@@ -6,7 +6,7 @@ in Daily, monthly, and yearly rhythm.
 """
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import support_functions as sf
 from dateutil.relativedelta import relativedelta
 
@@ -146,6 +146,42 @@ def cost_calc(
     # Logging-Eintrag erstellen, dass keine Summe berechnet werden konnte
 
 
+def last_day_of_month(date):
+    """
+    Functions calculate the last day of the provided date.
+    :param date: Date from which the last day is to be returned.
+    :return: Returns a date with changed day which is the last of the month.
+    """
+    if date.month == 12:
+        return date.replace(day=31)
+    return date.replace(month=date.month + 1, day=1) - timedelta(days=1)
+
+
+def check_month_parameter(month: str) -> int:
+    """
+    Check the month parameter and set default value if it is not plausible.
+    :param month: Parameter for month calculation as String
+    :return: Returns the plausibilized value as Integer
+    """
+    checked_month = int(month)
+    if checked_month < 1 or checked_month > 12:
+        return 1
+    return checked_month
+
+
+def check_year_parameter(month_year: str) -> dict:
+    """
+    Check the month and year parameter and set default value if it is not plausible.
+    :param month_year: Parameter year calculation as String
+    :return: Returns the plausibilized values in a List
+    """
+    values = {"day": 1, "month": 1}
+    split_date = month_year["cost_year"].split(".")
+    values["month"] = check_month_parameter(split_date[1])
+    values["day"] = int(split_date[0])
+    return values
+
+
 def check_cost_calc_requested(settings: dict) -> dict:
     """
     Check if a cost calculation is requested for this device and if it has the correct formatting.
@@ -163,13 +199,52 @@ def check_cost_calc_requested(settings: dict) -> dict:
         start_schedule_task["start_schedule_task"] |= True
     if "cost_month" in settings:
         if re.search(DAY_OF_MONTH_SCHEDULE_MATCH, settings["cost_month"]) is not None:
-            start_schedule_task["cost_month"] = settings["cost_month"]
+            start_schedule_task["cost_month"] = check_month_parameter(
+                settings["cost_month"]
+            )
             start_schedule_task["start_schedule_task"] |= True
     if "cost_year" in settings:
         if re.search(DATE_OF_YEAR_SCHEDULE_MATCH, settings["cost_year"]) is not None:
-            start_schedule_task["cost_year"] = settings["cost_year"]
+            start_schedule_task["cost_year"] = check_year_parameter(
+                settings["cost_year"]
+            )
             start_schedule_task["start_schedule_task"] |= True
     return start_schedule_task
+
+
+def check_matched_day(current_date: datetime.datetime, target_day: int) -> bool:
+    """
+    Checks if the current day matches the set day. In addition, if the set day is not possible,
+    the last day in this month is checked.
+    :param current_date: Current timestamp.
+    :param target_day: Target day for the calculation.
+    :return: Day matched as a boolean.
+    """
+    last_day_of_current_month = last_day_of_month(current_date)
+    if target_day > last_day_of_current_month.day:
+        if current_date.day == last_day_of_current_month.day:
+            return True
+    else:
+        if current_date.day == target_day:
+            return True
+    return False
+
+
+def check_matched_day_and_month(
+    current_date: datetime.datetime, target_day: int, target_month: int
+) -> bool:
+    """
+    Checks if the current day and month matches the set date. In addition, if the set day is not
+    possible, the last day in this month is checked.
+    :param current_date: Current timestamp.
+    :param target_day: Target day for the calculation.
+    :param target_month: Target month for the calculation.
+    :return: Day matched as a boolean.
+    """
+    if check_matched_day(current_date, target_day):
+        if current_date.month == target_month:
+            return True
+    return False
 
 
 def cost_calc_handler(
@@ -193,19 +268,18 @@ def cost_calc_handler(
             relativedelta(days=1),
         )
     if cost_calc_requested["cost_month"] is not None:
-        cost_calc(
-            device_name,
-            settings,
-            current_timestamp,
-            relativedelta(months=1),
-        )
+        if check_matched_day(current_timestamp, cost_calc_requested["cost_month"]):
+            cost_calc(
+                device_name,
+                settings,
+                current_timestamp,
+                relativedelta(months=1),
+            )
     if cost_calc_requested["cost_year"] is not None:
-        cost_calc(
-            device_name,
-            settings,
-            current_timestamp,
-            relativedelta(years=1),
-        )
+        if check_matched_day_and_month(
+            current_timestamp, cost_calc_requested["day"], cost_calc_requested["month"]
+        ):
+            cost_calc(device_name, settings, current_timestamp, relativedelta(years=1))
 
 
 def main() -> None:

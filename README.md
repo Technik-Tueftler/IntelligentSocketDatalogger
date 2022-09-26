@@ -56,24 +56,30 @@ In order to adapt the project to the own conceptions, two configuration files ar
   "general":
   {
     "log_level": "info"
+    "cost_calc_request_time": "00:00",
+    "price_kwh": 0.296
   }
 }
 ````
-`log_level:` Logging level for the project. Possible settings: *debug, info, warning, error, critical*.
+`log_level:` Logging level for the project. Possible settings: *debug, info, warning, error, critical*.  
+`cost_calc_request_time:` Specify the time when the cost calculation will start. This parameter is valid for all calculations. The default time is 00:00.  
+`price_kwh:` Indicates the price per kilowatt-hour. The default price is 0.30€.
 
 ### devices.json
 ````commandline 
 {
-  "WashingMachine ":
+  "Waschmaschine":
   {
     "ip": "192.168.178.200",
     "update_time": 10,
-    "cost_day": "00:00"
+    "cost_calc_month": "01",
+    "cost_calc_year": "01.01"
   },
-  "Stove":
+  "Herd":
   {
     "ip": "192.168.178.201",
     "update_time": 30
+    "cost_calc_day": true,
   }
 }
 ````
@@ -81,3 +87,5 @@ In order to adapt the project to the own conceptions, two configuration files ar
 `ip:` IP address in the connected network  
 `update_time:` Update time at which interval new data should be requested. Specification is in `seconds`.  
 `cost_day:` Enables the feature that once a day the total costs and work of the device for the last 24 hours are stored. The time when the process should start is set here. The formatting is: `HH:MM`. It is also indicated how many measured values are missing for an estimation, which quality the value has. The time depends on the setting on the server.  
+`cost_calc_month:` Activates the feature that once a month the total costs and the work of the device are calculated. The execution day in the month is set here.  
+`cost_calc_year:` Activates the feature that once a year the total costs and the work of the device are calculated. The execution day and month are set here.  
