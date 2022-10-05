@@ -113,11 +113,6 @@ def write_data(device_name: str, device_data: list) -> None:
         print(f"Error occurred during data saving with error message: {err}.")
         # Add missing measurement to queue
     except ConnectionError as err:
-        print(
-            f"Error occurred during connecting to the database with error message: {err}. The "
-            f"service/app will be closed. Please check the environment variables for the "
-            f"connection to database"
-        )
         logging.error(
             "Error occurred during connecting to the database from %s with error message: %s",
             device_name,
