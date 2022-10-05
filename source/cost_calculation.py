@@ -176,7 +176,7 @@ def check_year_parameter(month_year: str) -> dict:
     :return: Returns the plausibilized values in a List
     """
     values = {"day": 1, "month": 1}
-    split_date = month_year["cost_year"].split(".")
+    split_date = month_year.split(".")
     values["month"] = check_month_parameter(split_date[1])
     values["day"] = int(split_date[0])
     return values
@@ -197,16 +197,22 @@ def check_cost_calc_requested(settings: dict) -> dict:
     if ("cost_calc_day" in settings) and (settings["cost_calc_day"]):
         start_schedule_task["cost_day"] = True
         start_schedule_task["start_schedule_task"] |= True
-    if "cost_month" in settings:
-        if re.search(DAY_OF_MONTH_SCHEDULE_MATCH, settings["cost_month"]) is not None:
+    if "cost_calc_month" in settings:
+        if (
+            re.search(DAY_OF_MONTH_SCHEDULE_MATCH, settings["cost_calc_month"])
+            is not None
+        ):
             start_schedule_task["cost_month"] = check_month_parameter(
-                settings["cost_month"]
+                settings["cost_calc_month"]
             )
             start_schedule_task["start_schedule_task"] |= True
-    if "cost_year" in settings:
-        if re.search(DATE_OF_YEAR_SCHEDULE_MATCH, settings["cost_year"]) is not None:
+    if "cost_calc_year" in settings:
+        if (
+            re.search(DATE_OF_YEAR_SCHEDULE_MATCH, settings["cost_calc_year"])
+            is not None
+        ):
             start_schedule_task["cost_year"] = check_year_parameter(
-                settings["cost_year"]
+                settings["cost_calc_year"]
             )
             start_schedule_task["start_schedule_task"] |= True
     return start_schedule_task
@@ -259,6 +265,7 @@ def cost_calc_handler(
     :param cost_calc_requested: Structure which calculations are requested
     :return: None
     """
+
     current_timestamp = datetime.utcnow()
     if cost_calc_requested["cost_day"]:
         cost_calc(
@@ -277,7 +284,9 @@ def cost_calc_handler(
             )
     if cost_calc_requested["cost_year"] is not None:
         if check_matched_day_and_month(
-            current_timestamp, cost_calc_requested["day"], cost_calc_requested["month"]
+            current_timestamp,
+            cost_calc_requested["cost_year"]["day"],
+            cost_calc_requested["cost_year"]["month"],
         ):
             cost_calc(device_name, settings, current_timestamp, relativedelta(years=1))
 
