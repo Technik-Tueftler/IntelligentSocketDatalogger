@@ -89,3 +89,18 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
 `cost_calc_day:` Aktiviert das Feature, dass einmal am Tag die gesamten Kosten und die Arbeit des Gerätes für die letzten 24 Stunden abgelegt werden.  
 `cost_calc_month:` Aktiviert das Feature, dass einmal im Monat die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag im Monat.  
 `cost_calc_year:` Aktiviert das Feature, dass einmal im Jahr die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag und Monat.  
+
+## Docker Compose Beispiel
+````commandline
+version: "2"
+services:
+  influxdb:
+    image: techniktueftler/intelligent_socket_datalogger
+    container_name: intelligent_socket_datalogger
+    volumes:
+      - /srv/dev-disk-by-uuid-0815/data/socket_datalogger/:/user/app/IntelligentSocketDatalogger/files/
+    environment:
+      - DB_IP_ADDRESS=192.193.194.195
+      - DB_USER_NAME=shellyplug
+      - DB_NAME=power_consumption
+````

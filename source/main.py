@@ -59,60 +59,65 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
     :return: None
     """
     request_url = "http://" + settings["ip"] + "/status"
+    device_data = []
+    try:
+        with urllib.request.urlopen(request_url) as url:
+            data = json.loads(url.read().decode())
+            # Jedes Tag abfragen, ob es wirklich vorhanden ist und nur dann eintragen. So
+            # könnten mehr Steckdosen unterstützt werden.
+            device_data = [
+                {
+                    "measurement": "census",
+                    "tags": {"device": device_name},
+                    "time": datetime.utcnow(),
+                    "fields": {
+                        "power": data["meters"][0]["power"],
+                        "is_valid": data["meters"][0]["is_valid"],
+                        "device_temperature": data["temperature"],
+                        "fetch_success": True,
+                        "energy_wh": data["meters"][0]["power"]
+                        * settings["update_time"]
+                        / 3600,
+                    },
+                }
+            ]
+    except urllib.error.URLError as err:
+        print(
+            f"Error occurred during data fetching from "
+            f"{device_name} with error message: {err}."
+        )
+        device_data = [
+            {
+                "measurement": "census",
+                "tags": {"device": device_name},
+                "time": datetime.utcnow(),
+                "fields": {"fetch_success": False},
+            }
+        ]
+    finally:
+        write_data(device_name, device_data)
+
+
+def write_data(device_name: str, device_data: list) -> None:
+    """
+    Write fetched data to Db with own context manager.
+    :param device_name: Transferred device name
+    :param device_data: fetched data
+    :return: None
+    """
     try:
         with support_functions.InfluxDBConnection() as conn:
-            device_data = []
-            try:
-                with urllib.request.urlopen(request_url) as url:
-                    data = json.loads(url.read().decode())
-                    # Jedes Tag abfragen, ob es wirklich vorhanden ist und nur dann eintragen. So
-                    # könnten mehr Steckdosen unterstützt werden.
-                    device_data = [
-                        {
-                            "measurement": "census",
-                            "tags": {"device": device_name},
-                            "time": datetime.utcnow(),
-                            "fields": {
-                                "power": data["meters"][0]["power"],
-                                "is_valid": data["meters"][0]["is_valid"],
-                                "device_temperature": data["temperature"],
-                                "fetch_success": True,
-                                "energy_wh": data["meters"][0]["power"]
-                                * settings["update_time"]
-                                / 3600,
-                            },
-                        }
-                    ]
-            except urllib.error.URLError as err:
-                print(
-                    f"Error occurred during data fetching from "
-                    f"{device_name} with error message: {err}."
-                )
-                device_data = [
-                    {
-                        "measurement": "census",
-                        "tags": {"device": device_name},
-                        "time": datetime.utcnow(),
-                        "fields": {"fetch_success": False},
-                    }
-                ]
-            finally:
-                conn.switch_database(support_functions.login_information.db_name)
-                conn.write_points(device_data)
+            conn.switch_database(support_functions.login_information.db_name)
+            conn.write_points(device_data)
     except InfluxDBClientError as err:
         print(f"Error occurred during data saving with error message: {err}.")
         # Add missing measurement to queue
     except ConnectionError as err:
-        print(
-            f"Error occurred during connecting to the database with error message: {err}. The "
-            f"service/app will be closed. Please check the environment variables for the "
-            f"connection to database"
-        )
         logging.error(
-            "Error occurred during connecting to the database with error message: %s",
+            "Error occurred during connecting to the database from %s with error message: %s",
+            device_name,
             err,
         )
-        sys.exit(0)
 
 
 def main() -> None:
