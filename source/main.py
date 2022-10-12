@@ -13,8 +13,10 @@ from datetime import datetime
 from dataclasses import dataclass
 import schedule
 from influxdb.exceptions import InfluxDBClientError
+
 import support_functions
 import cost_calculation as cc
+from constants import CONFIGURATION_FILE_PATH, DEVICES_FILE_PATH
 
 
 @dataclass
@@ -31,7 +33,7 @@ class LogLevel:
         "critical": logging.CRITICAL,
     }
     config_level: str = logging.CRITICAL
-    with open("../files/config.json", encoding="utf-8") as file:
+    with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
         general_config = json.load(file)["general"]
         if "log_level" in general_config:
             temp_level = general_config["log_level"]
@@ -130,7 +132,7 @@ def main() -> None:
         # Check if file exist, if not close app with message
         # Check if ip and update_time
         data = {}
-        with open("../files/devices.json", encoding="utf-8") as file:
+        with open(DEVICES_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
         request_start_time = cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
@@ -165,5 +167,6 @@ def main() -> None:
 if __name__ == "__main__":
     print(f"Start Program: {datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')} UTC")
     logging.debug("Start Program: %s", datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
+    support_functions.check_and_verify_db_connection()
     if support_functions.login_information.verified is not False:
         main()

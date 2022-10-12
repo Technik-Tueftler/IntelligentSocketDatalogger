@@ -7,8 +7,10 @@ in Daily, monthly, and yearly rhythm.
 import re
 import json
 from datetime import datetime, timedelta
-import support_functions as sf
 from dateutil.relativedelta import relativedelta
+
+import support_functions as sf
+from constants import CONFIGURATION_FILE_PATH
 
 TIME_OF_DAY_SCHEDULE_MATCH = r"^(?:[01]\d|2[0-3]):(?:[0-5]\d)$"
 DAY_OF_MONTH_SCHEDULE_MATCH = r"^[\d]{2}$"
@@ -26,7 +28,7 @@ def check_cost_calc_request_time() -> str:
     # Wenn es fehlschlägt, muss auch ein log Eintrag erstellt werden
     try:
         checked_requested_start_time = "00:00"
-        with open("../files/config.json", encoding="utf-8") as file:
+        with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
             if ("general" in data) and ("cost_calc_request_time" in data["general"]):
                 requested_start_time = data["general"]["cost_calc_request_time"]
@@ -55,7 +57,7 @@ def check_cost_config() -> float:
     # Wenn es fehlschlägt, muss auch ein log Eintrag erstellt werden
     default_price = 0.3
     try:
-        with open("../files/config.json", encoding="utf-8") as file:
+        with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
             if ("general" in data) and ("price_kwh" in data["general"]):
                 requested_kwh_price = data["general"]["price_kwh"]
@@ -296,19 +298,7 @@ def main() -> None:
     Scheduling function for regular call.
     :return: None
     """
-    data = {
-        "ip": "192.168.178.200",
-        "update_time": 30,
-        "cost_calc_day": True,
-        "cost_calc_month": "01",
-        "cost_calc_year": "01.01",
-    }
-    cost_calc(
-        "Kuehlschrank",
-        data,
-        datetime.utcnow(),
-        relativedelta(years=1),
-    )
+    print(CONFIGURATION_FILE_PATH)
 
 
 if __name__ == "__main__":
