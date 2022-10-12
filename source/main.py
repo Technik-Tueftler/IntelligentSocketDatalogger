@@ -9,6 +9,7 @@ import json
 import time
 import logging
 import urllib.request
+from urllib.error import HTTPError, URLError
 from datetime import datetime
 from dataclasses import dataclass
 import schedule
@@ -16,7 +17,7 @@ from influxdb.exceptions import InfluxDBClientError
 
 import support_functions
 import cost_calculation as cc
-from constants import CONFIGURATION_FILE_PATH, DEVICES_FILE_PATH
+from constants import CONFIGURATION_FILE_PATH, DEVICES_FILE_PATH, TIMEOUT_RESPONSE_TIME
 
 
 @dataclass
@@ -63,7 +64,7 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
     request_url = "http://" + settings["ip"] + "/status"
     device_data = []
     try:
-        with urllib.request.urlopen(request_url) as url:
+        with urllib.request.urlopen(request_url, timeout=TIMEOUT_RESPONSE_TIME) as url:
             data = json.loads(url.read().decode())
             # Jedes Tag abfragen, ob es wirklich vorhanden ist und nur dann eintragen. So
             # könnten mehr Steckdosen unterstützt werden.
@@ -83,9 +84,9 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
                     },
                 }
             ]
-    except urllib.error.URLError as err:
+    except (HTTPError, URLError, ConnectionResetError, TimeoutError) as err:
         print(
-            f"Error occurred during data fetching from "
+            f"Error occurred while fetching data from "
             f"{device_name} with error message: {err}."
         )
         device_data = [
