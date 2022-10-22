@@ -1,5 +1,5 @@
 # IntelligentSocketDatalogger
-[![Docker image build](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/build.yml/badge.svg)](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/build.yml)[![Pylint](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/pylint.yml/badge.svg)](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/pylint.yml)
+[![Docker image build](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/build.yml/badge.svg)](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/build.yml)[![Pylint/Unittest](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/merge_test.yml/badge.svg)](https://github.com/Technik-Tueftler/IntelligentSocketDatalogger/actions/workflows/merge_test.yml)
 
 IntelligentSocketDatalogger is an app which reads intelligent sockets in individually adjustable time intervals and stores their return values in an InfluxDB. Each socket can be set with additional parameters. So you can have the total Wh per device written into a text file once a day (time variable).
 
