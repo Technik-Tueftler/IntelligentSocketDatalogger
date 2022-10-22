@@ -10,6 +10,8 @@ from requests.exceptions import ConnectTimeout
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
+# from source import logging_helper
+
 
 @dataclass
 class DataApp:  # pylint: disable=too-many-instance-attributes
@@ -26,7 +28,7 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
     db_port: int = 0
     verified: bool = True
     try:
-        if None in (db_ip_address, db_user_name, db_user_password, db_name):
+        if None in (db_ip_address, db_user_name, db_name):
             raise ValueError(
                 "Not all needed env variable are defined. Please check the documentation and "
                 "add all necessary login information."
@@ -86,15 +88,23 @@ def check_and_verify_db_connection() -> None:
     try:
         with InfluxDBConnection() as connection:
             connection.ping()
+            if not any(
+                    True
+                    for db in connection.get_list_database()
+                    if db["name"] == login_information.db_name
+            ):
+                connection.create_database(login_information.db_name)
             connection.switch_database(login_information.db_name)
             login_information.verified = True
-    except (InfluxDBClientError, ConnectTimeout) as err:
+    except (InfluxDBClientError, ConnectTimeout, ConnectionError) as err:
         print(
             f"Error occurred during setting the database with error message: {err}. All login"
             f"information correct? Like database address, user name and so on? "
             f"Check dokumentation for all environment variables"
         )
         login_information.verified = False
+        # logging_helper.write_error_log(
+        #    f"Error occurred during setting the database with error message: {err}")
 
 
 def cost_logging(file_name: str, data: dict) -> None:
@@ -151,7 +161,6 @@ def fetch_measurements(bind_params: dict) -> influxdb.resultset.ResultSet:
 
 
 login_information = DataApp()
-check_and_verify_db_connection()
 
 
 def main() -> None:

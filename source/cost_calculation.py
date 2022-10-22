@@ -7,8 +7,10 @@ in Daily, monthly, and yearly rhythm.
 import re
 import json
 from datetime import datetime, timedelta
-import support_functions as sf
 from dateutil.relativedelta import relativedelta
+
+from source.constants import CONFIGURATION_FILE_PATH
+from source import support_functions as sf
 
 TIME_OF_DAY_SCHEDULE_MATCH = r"^(?:[01]\d|2[0-3]):(?:[0-5]\d)$"
 DAY_OF_MONTH_SCHEDULE_MATCH = r"^[\d]{2}$"
@@ -26,7 +28,7 @@ def check_cost_calc_request_time() -> str:
     # Wenn es fehlschlägt, muss auch ein log Eintrag erstellt werden
     try:
         checked_requested_start_time = "00:00"
-        with open("../files/config.json", encoding="utf-8") as file:
+        with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
             if ("general" in data) and ("cost_calc_request_time" in data["general"]):
                 requested_start_time = data["general"]["cost_calc_request_time"]
@@ -55,7 +57,7 @@ def check_cost_config() -> float:
     # Wenn es fehlschlägt, muss auch ein log Eintrag erstellt werden
     default_price = 0.3
     try:
-        with open("../files/config.json", encoding="utf-8") as file:
+        with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
             if ("general" in data) and ("price_kwh" in data["general"]):
                 requested_kwh_price = data["general"]["price_kwh"]
@@ -146,7 +148,7 @@ def cost_calc(
     # Logging-Eintrag erstellen, dass keine Summe berechnet werden konnte
 
 
-def last_day_of_month(date):
+def last_day_of_month(date) -> datetime:
     """
     Functions calculate the last day of the provided date.
     :param date: Date from which the last day is to be returned.
@@ -161,7 +163,7 @@ def check_month_parameter(month: str) -> int:
     """
     Check the month parameter and set default value if it is not plausible.
     :param month: Parameter for month calculation as String
-    :return: Returns the plausibilized value as Integer
+    :return: Returns the plausibility value as Integer
     """
     checked_month = int(month)
     if checked_month < 1 or checked_month > 12:
@@ -169,16 +171,30 @@ def check_month_parameter(month: str) -> int:
     return checked_month
 
 
-def check_year_parameter(month_year: str) -> dict:
+def check_day_parameter(day: str) -> int:
     """
-    Check the month and year parameter and set default value if it is not plausible.
-    :param month_year: Parameter year calculation as String
-    :return: Returns the plausibilized values in a List
+    Check the day parameter and set default value if it is not plausible. Since the TASK always
+    comes daily, it is not possible to check the day for the month because there are leap years
+    for February.
+    :param day: Parameter for day calculation as String
+    :return: Returns the plausibility value as Integer
+    """
+    checked_day = int(day)
+    if checked_day < 1 or checked_day > 31:
+        return 1
+    return checked_day
+
+
+def check_year_parameter(day_month: str) -> dict:
+    """
+    Check the day and month parameter and set default value if it is not plausible.
+    :param day_month: Parameter year calculation as String
+    :return: Returns the plausibility values in a List
     """
     values = {"day": 1, "month": 1}
-    split_date = month_year.split(".")
+    split_date = day_month.split(".")
     values["month"] = check_month_parameter(split_date[1])
-    values["day"] = int(split_date[0])
+    values["day"] = check_day_parameter(split_date[0])
     return values
 
 
@@ -296,19 +312,6 @@ def main() -> None:
     Scheduling function for regular call.
     :return: None
     """
-    data = {
-        "ip": "192.168.178.200",
-        "update_time": 30,
-        "cost_calc_day": True,
-        "cost_calc_month": "01",
-        "cost_calc_year": "01.01",
-    }
-    cost_calc(
-        "Kuehlschrank",
-        data,
-        datetime.utcnow(),
-        relativedelta(years=1),
-    )
 
 
 if __name__ == "__main__":
