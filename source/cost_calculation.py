@@ -148,7 +148,7 @@ def cost_calc(
     # Logging-Eintrag erstellen, dass keine Summe berechnet werden konnte
 
 
-def last_day_of_month(date):
+def last_day_of_month(date) -> datetime:
     """
     Functions calculate the last day of the provided date.
     :param date: Date from which the last day is to be returned.
