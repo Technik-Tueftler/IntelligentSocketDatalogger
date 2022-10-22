@@ -9,7 +9,7 @@ import json
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from constants import CONFIGURATION_FILE_PATH
+from source.constants import CONFIGURATION_FILE_PATH
 from source import support_functions as sf
 
 TIME_OF_DAY_SCHEDULE_MATCH = r"^(?:[01]\d|2[0-3]):(?:[0-5]\d)$"
