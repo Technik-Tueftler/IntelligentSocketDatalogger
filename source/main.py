@@ -7,50 +7,17 @@ device temperature.
 import sys
 import json
 import time
-import logging
 import urllib.request
 from urllib.error import HTTPError, URLError
 from datetime import datetime
-from dataclasses import dataclass
+
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 
 from source import support_functions
 from source import cost_calculation as cc
-from source.constants import CONFIGURATION_FILE_PATH, DEVICES_FILE_PATH, TIMEOUT_RESPONSE_TIME
-
-
-@dataclass
-class LogLevel:
-    """
-    Configuration class for reding the logging level and provide to application.
-    """
-
-    log_levels = {
-        "debug": logging.DEBUG,
-        "info": logging.INFO,
-        "warning": logging.WARNING,
-        "error": logging.ERROR,
-        "critical": logging.CRITICAL,
-    }
-    config_level: str = logging.CRITICAL
-    with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
-        general_config = json.load(file)["general"]
-        if "log_level" in general_config:
-            temp_level = general_config["log_level"]
-            config_level = log_levels[temp_level]
-
-
-program_logging_level = LogLevel()
-logging.basicConfig(
-    filename="../files/main.log",
-    encoding="utf-8",
-    filemode="a",
-    level=program_logging_level.config_level,
-    format="%(asctime)s: %(levelname)s - %(message)s",
-    datefmt="%d-%b-%y %H:%M:%S",
-)
-logging.Formatter.converter = time.gmtime
+from source import logging_helper
+from source.constants import DEVICES_FILE_PATH, TIMEOUT_RESPONSE_TIME
 
 
 def fetch_shelly_data(device_name: str, settings: dict) -> None:
@@ -116,11 +83,9 @@ def write_data(device_name: str, device_data: list) -> None:
         print(f"Error occurred during data saving with error message: {err}.")
         # Add missing measurement to queue
     except ConnectionError as err:
-        logging.error(
-            "Error occurred during connecting to the database from %s with error message: %s",
-            device_name,
-            err,
-        )
+        logging_helper.write_error_log(
+            f"Error occurred during connecting to the database from {device_name} "
+            f"with error message: {err}")
 
 
 def main() -> None:
@@ -159,15 +124,16 @@ def main() -> None:
             f"folder you passed with the environment variables. Error occurred during start the "
             f"app with error message: {err}."
         )
-        logging.error(
-            "The configuration file for the devices could not be found: %s", err
-        )
+        logging_helper.write_error_log(
+            f"The configuration file for the devices could not be found: {err}")
         sys.exit(0)
 
 
 if __name__ == "__main__":
-    print(f"Start Program: {datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')} UTC")
-    logging.debug("Start Program: %s", datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"))
+    timestamp_now = datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')
+    print(f"Start Program: {timestamp_now} UTC")
+    logging_helper.write_debug_log(
+        f"Start Program: {timestamp_now}")
     support_functions.check_and_verify_db_connection()
     if support_functions.login_information.verified is not False:
         main()

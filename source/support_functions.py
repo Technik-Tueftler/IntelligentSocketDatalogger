@@ -10,6 +10,8 @@ from requests.exceptions import ConnectTimeout
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
+from source import logging_helper
+
 
 @dataclass
 class DataApp:  # pylint: disable=too-many-instance-attributes
@@ -101,6 +103,8 @@ def check_and_verify_db_connection() -> None:
             f"Check dokumentation for all environment variables"
         )
         login_information.verified = False
+        logging_helper.write_error_log(
+            f"Error occurred during setting the database with error message: {err}")
 
 
 def cost_logging(file_name: str, data: dict) -> None:
