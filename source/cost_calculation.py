@@ -163,7 +163,7 @@ def check_month_parameter(month: str) -> int:
     """
     Check the month parameter and set default value if it is not plausible.
     :param month: Parameter for month calculation as String
-    :return: Returns the plausibilized value as Integer
+    :return: Returns the plausibility value as Integer
     """
     checked_month = int(month)
     if checked_month < 1 or checked_month > 12:
@@ -171,16 +171,30 @@ def check_month_parameter(month: str) -> int:
     return checked_month
 
 
-def check_year_parameter(month_year: str) -> dict:
+def check_day_parameter(day: str) -> int:
     """
-    Check the month and year parameter and set default value if it is not plausible.
-    :param month_year: Parameter year calculation as String
-    :return: Returns the plausibilized values in a List
+    Check the day parameter and set default value if it is not plausible. Since the TASK always
+    comes daily, it is not possible to check the day for the month because there are leap years
+    for February.
+    :param day: Parameter for day calculation as String
+    :return: Returns the plausibility value as Integer
+    """
+    checked_day = int(day)
+    if checked_day < 1 or checked_day > 31:
+        return 1
+    return checked_day
+
+
+def check_year_parameter(day_month: str) -> dict:
+    """
+    Check the day and month parameter and set default value if it is not plausible.
+    :param day_month: Parameter year calculation as String
+    :return: Returns the plausibility values in a List
     """
     values = {"day": 1, "month": 1}
-    split_date = month_year.split(".")
+    split_date = day_month.split(".")
     values["month"] = check_month_parameter(split_date[1])
-    values["day"] = int(split_date[0])
+    values["day"] = check_day_parameter(split_date[0])
     return values
 
 
@@ -298,7 +312,6 @@ def main() -> None:
     Scheduling function for regular call.
     :return: None
     """
-    print(CONFIGURATION_FILE_PATH)
 
 
 if __name__ == "__main__":
