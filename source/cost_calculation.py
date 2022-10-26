@@ -11,12 +11,14 @@ from dateutil.relativedelta import relativedelta
 
 from source.constants import CONFIGURATION_FILE_PATH
 from source import support_functions as sf
+from source import logging_helper as lh
 
 TIME_OF_DAY_SCHEDULE_MATCH = r"^(?:[01]\d|2[0-3]):(?:[0-5]\d)$"
 DAY_OF_MONTH_SCHEDULE_MATCH = r"^[\d]{2}$"
 DATE_OF_YEAR_SCHEDULE_MATCH = r"^[\d]{2}[.][\d]{2}$"
 TIMESTAMP_FORMAT_INPUT = "%Y-%m-%dT%H:%M:%S.%fZ"
 TIMESTAMP_FORMAT_OUTPUT = "%Y-%m-%dT%H:%M:%S"
+configuration_failed_message_send = {"FileNotFoundError": False, "ValueError": False}
 
 
 def check_cost_calc_request_time() -> str:
@@ -25,7 +27,6 @@ def check_cost_calc_request_time() -> str:
     wrong, a default time is returned.
     :return: Start time in string format
     """
-    # Wenn es fehlschlägt, muss auch ein log Eintrag erstellt werden
     try:
         checked_requested_start_time = "00:00"
         with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
@@ -40,11 +41,15 @@ def check_cost_calc_request_time() -> str:
         return checked_requested_start_time
 
     except FileNotFoundError as err:
-        print(
-            f"The file for general configuration could not be found. Please put it in the "
-            f"folder you passed with the environment variables. The default values are used. "
-            f"Error occurred during start the app with error message: {err}."
+        error_message = (
+            f"The file for general configuration could not be found. Please put "
+            f"it in the folder you passed with the environment variables. The "
+            f"default values are used. Error occurred during start the app with "
+            f"error message: {err}."
         )
+        if not configuration_failed_message_send[FileNotFoundError]:
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
+            configuration_failed_message_send[FileNotFoundError] = True
         return checked_requested_start_time
 
 
@@ -54,7 +59,6 @@ def check_cost_config() -> float:
     If something is wrong, a default time is returned and a log entry is written.
     :return: price per KWh as a float
     """
-    # Wenn es fehlschlägt, muss auch ein log Eintrag erstellt werden
     default_price = 0.3
     try:
         with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
@@ -67,17 +71,24 @@ def check_cost_config() -> float:
         return checked_requested_kwh_price
 
     except FileNotFoundError as err:
-        print(
-            f"The file for general configuration could not be found. Please put it in the "
-            f"folder you passed with the environment variables. The default values are used. "
-            f"Error occurred during start the app with error message: {err}."
+        error_message = (
+            f"The file for general configuration could not be found. Please put "
+            f"it in the folder you passed with the environment variables. The "
+            f"default values are used. Error occurred during start the app with "
+            f"error message: {err}."
         )
+        if not configuration_failed_message_send[FileNotFoundError]:
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
+            configuration_failed_message_send[FileNotFoundError] = True
         return default_price
     except ValueError as err:
-        print(
-            f"The setting for the price is not a number. A default value of 0.30€ was assumed. "
-            f"Error message: {err}"
+        error_message = (
+            f"The setting for the price is not a number. A default value of 0.30€ "
+            f"was assumed. Error message: {err}"
         )
+        if not configuration_failed_message_send[ValueError]:
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
+            configuration_failed_message_send[ValueError] = True
         return default_price
 
 
@@ -145,7 +156,6 @@ def cost_calc(
         sf.cost_logging(device_name + "_month", data)
     elif time_difference.years == 1:
         sf.cost_logging(device_name + "_year", data)
-    # Logging-Eintrag erstellen, dass keine Summe berechnet werden konnte
 
 
 def last_day_of_month(date) -> datetime:

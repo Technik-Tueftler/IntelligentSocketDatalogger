@@ -13,6 +13,8 @@ RUN pip install python-dateutil
 COPY files/ ./files/
 COPY source/ ./source/
 
+ENV PYTHONPATH "${PYTHONPATH}:/user/app/IntelligentSocketDatalogger"
+
 WORKDIR /user/app/IntelligentSocketDatalogger/source/
 
 CMD ["python", "-u", "main.py"]

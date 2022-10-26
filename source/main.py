@@ -4,6 +4,7 @@
 Main function for cyclic call of all set devices and capture of the energy and the
 device temperature.
 """
+import os
 import sys
 import json
 import time
@@ -16,8 +17,17 @@ from influxdb.exceptions import InfluxDBClientError
 
 from source import support_functions
 from source import cost_calculation as cc
-from source import logging_helper
+from source import logging_helper as lh
 from source.constants import DEVICES_FILE_PATH, TIMEOUT_RESPONSE_TIME
+
+# D:\Workspace\git\ShellyPlugDatalogger
+# D:\Workspace\git\ShellyPlugDatalogger\source
+# sys.path.append(r"D:\Workspace\git\ShellyPlugDatalogger")
+print("----------------")
+print(os.getcwd())
+print("----------------")
+for p in sys.path:
+    print(p)
 
 
 def fetch_shelly_data(device_name: str, settings: dict) -> None:
@@ -52,10 +62,11 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
                 }
             ]
     except (HTTPError, URLError, ConnectionResetError, TimeoutError) as err:
-        print(
-            f"Error occurred while fetching data from "
-            f"{device_name} with error message: {err}."
+        error_message = (
+            f"Error occurred while fetching data from {device_name} with error "
+            f"message: {err}."
         )
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
         device_data = [
             {
                 "measurement": "census",
@@ -80,23 +91,22 @@ def write_data(device_name: str, device_data: list) -> None:
             conn.switch_database(support_functions.login_information.db_name)
             conn.write_points(device_data)
     except InfluxDBClientError as err:
-        print(f"Error occurred during data saving with error message: {err}.")
-        # Add missing measurement to queue
+        error_message = f"Error occurred during data saving with error message: {err}."
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
     except ConnectionError as err:
-        logging_helper.write_error_log(
+        error_message = (
             f"Error occurred during connecting to the database from {device_name} "
-            f"with error message: {err}")
+            f"with error message: {err}"
+        )
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
 
 def main() -> None:
     """
     Scheduling function for regular call.
-    :param app_data: app connection information
     :return: None
     """
     try:
-        # Check if file exist, if not close app with message
-        # Check if ip and update_time
         data = {}
         with open(DEVICES_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
@@ -119,21 +129,17 @@ def main() -> None:
             schedule.run_pending()
             time.sleep(1)
     except FileNotFoundError as err:
-        print(
-            f"The configuration file for the devices could not be found. Please put it in the "
-            f"folder you passed with the environment variables. Error occurred during start the "
-            f"app with error message: {err}."
+        error_message = (
+            f"The configuration file for the devices could not be found: {err}"
         )
-        logging_helper.write_error_log(
-            f"The configuration file for the devices could not be found: {err}")
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
         sys.exit(0)
 
 
 if __name__ == "__main__":
-    timestamp_now = datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')
-    print(f"Start Program: {timestamp_now} UTC")
-    logging_helper.write_debug_log(
-        f"Start Program: {timestamp_now}")
+    timestamp_now = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S")
+    message = f"Start Program: {timestamp_now} UTC"
+    lh.write_log(lh.LoggingLevel.INFO.value, message)
     support_functions.check_and_verify_db_connection()
     if support_functions.login_information.verified is not False:
         main()
