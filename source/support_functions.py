@@ -10,7 +10,7 @@ from requests.exceptions import ConnectTimeout
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
-# from source import logging_helper
+from source import logging_helper as lh
 
 
 @dataclass
@@ -60,7 +60,7 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
             raise ValueError("Environment variable VERIFY_SSL is not True or False.")
     except ValueError as err:
         verified = False
-        print(err)
+        lh.write_log(lh.LoggingLevel.ERROR, err)
 
 
 class InfluxDBConnection(InfluxDBClient):
@@ -89,9 +89,9 @@ def check_and_verify_db_connection() -> None:
         with InfluxDBConnection() as connection:
             connection.ping()
             if not any(
-                    True
-                    for db in connection.get_list_database()
-                    if db["name"] == login_information.db_name
+                True
+                for db in connection.get_list_database()
+                if db["name"] == login_information.db_name
             ):
                 connection.create_database(login_information.db_name)
             connection.switch_database(login_information.db_name)
@@ -103,8 +103,10 @@ def check_and_verify_db_connection() -> None:
             f"Check dokumentation for all environment variables"
         )
         login_information.verified = False
-        # logging_helper.write_error_log(
-        #    f"Error occurred during setting the database with error message: {err}")
+        error_message = (
+            f"Error occurred during setting the database with error message: {err}"
+        )
+        lh.write_log(lh.LoggingLevel.ERROR, error_message)
 
 
 def cost_logging(file_name: str, data: dict) -> None:

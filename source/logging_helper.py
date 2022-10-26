@@ -7,7 +7,20 @@ import time
 import logging
 import json
 from dataclasses import dataclass
+from enum import Enum
 from source.constants import CONFIGURATION_FILE_PATH
+
+
+class LoggingLevel(Enum):
+    """
+    Collection for logging levels
+    """
+
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+    CRITICAL = logging.CRITICAL
 
 
 @dataclass
@@ -17,18 +30,23 @@ class LogLevel:
     """
 
     log_levels = {
-        "debug": logging.DEBUG,
-        "info": logging.INFO,
-        "warning": logging.WARNING,
-        "error": logging.ERROR,
-        "critical": logging.CRITICAL,
+        "debug": LoggingLevel.DEBUG,
+        "info": LoggingLevel.INFO,
+        "warning": LoggingLevel.WARNING,
+        "error": LoggingLevel.ERROR,
+        "critical": LoggingLevel.CRITICAL,
     }
     config_level: str = logging.CRITICAL
-    with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
-        general_config = json.load(file)["general"]
-        if "log_level" in general_config:
-            temp_level = general_config["log_level"]
-            config_level = log_levels[temp_level]
+    try:
+        with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
+            general_config = json.load(file)["general"]
+            if "log_level" in general_config:
+                config_level = log_levels[general_config["log_level"]]
+    except FileNotFoundError as err:
+        print(
+            f"The configuration file could not be found. Please put it in the folder you passed "
+            f"with the environment variables. Error occurred message: {err}."
+        )
 
 
 program_logging_level = LogLevel()
@@ -43,22 +61,15 @@ logging.basicConfig(
 logging.Formatter.converter = time.gmtime
 
 
-def write_debug_log(log_message: str) -> None:
+def write_log(level: int, message: str):
     """
     Write function for logging debug information
-    :param log_message: Message
+    :param level: log level for the message
+    :param message: log message
     :return: No return value
     """
-    logging.debug(log_message)
-
-
-def write_error_log(log_message: str) -> None:
-    """
-    Write function for logging error information
-    :param log_message: Message
-    :return: No return value
-    """
-    logging.error(log_message)
+    logging.log(level, message)
+    print(message)
 
 
 def main() -> None:
