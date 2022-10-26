@@ -60,7 +60,7 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
             raise ValueError("Environment variable VERIFY_SSL is not True or False.")
     except ValueError as err:
         verified = False
-        lh.write_log(lh.LoggingLevel.ERROR, err)
+        lh.write_log(lh.LoggingLevel.ERROR.value, err)
 
 
 class InfluxDBConnection(InfluxDBClient):
@@ -106,7 +106,7 @@ def check_and_verify_db_connection() -> None:
         error_message = (
             f"Error occurred during setting the database with error message: {err}"
         )
-        lh.write_log(lh.LoggingLevel.ERROR, error_message)
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
 
 def cost_logging(file_name: str, data: dict) -> None:

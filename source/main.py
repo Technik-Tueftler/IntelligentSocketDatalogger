@@ -66,7 +66,7 @@ def fetch_shelly_data(device_name: str, settings: dict) -> None:
             f"Error occurred while fetching data from {device_name} with error "
             f"message: {err}."
         )
-        lh.write_log(lh.LoggingLevel.ERROR, error_message)
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
         device_data = [
             {
                 "measurement": "census",
@@ -92,13 +92,13 @@ def write_data(device_name: str, device_data: list) -> None:
             conn.write_points(device_data)
     except InfluxDBClientError as err:
         error_message = f"Error occurred during data saving with error message: {err}."
-        lh.write_log(lh.LoggingLevel.ERROR, error_message)
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
     except ConnectionError as err:
         error_message = (
             f"Error occurred during connecting to the database from {device_name} "
             f"with error message: {err}"
         )
-        lh.write_log(lh.LoggingLevel.ERROR, error_message)
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
 
 def main() -> None:
@@ -132,14 +132,14 @@ def main() -> None:
         error_message = (
             f"The configuration file for the devices could not be found: {err}"
         )
-        lh.write_log(lh.LoggingLevel.ERROR, error_message)
+        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
         sys.exit(0)
 
 
 if __name__ == "__main__":
     timestamp_now = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S")
     message = f"Start Program: {timestamp_now} UTC"
-    lh.write_log(lh.LoggingLevel.INFO, message)
+    lh.write_log(lh.LoggingLevel.INFO.value, message)
     support_functions.check_and_verify_db_connection()
     if support_functions.login_information.verified is not False:
         main()

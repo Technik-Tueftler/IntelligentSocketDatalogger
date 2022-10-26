@@ -48,7 +48,7 @@ def check_cost_calc_request_time() -> str:
             f"error message: {err}."
         )
         if not configuration_failed_message_send[FileNotFoundError]:
-            lh.write_log(lh.LoggingLevel.WARNING, error_message)
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
             configuration_failed_message_send[FileNotFoundError] = True
         return checked_requested_start_time
 
@@ -78,7 +78,7 @@ def check_cost_config() -> float:
             f"error message: {err}."
         )
         if not configuration_failed_message_send[FileNotFoundError]:
-            lh.write_log(lh.LoggingLevel.WARNING, error_message)
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
             configuration_failed_message_send[FileNotFoundError] = True
         return default_price
     except ValueError as err:
@@ -87,7 +87,7 @@ def check_cost_config() -> float:
             f"was assumed. Error message: {err}"
         )
         if not configuration_failed_message_send[ValueError]:
-            lh.write_log(lh.LoggingLevel.WARNING, error_message)
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
             configuration_failed_message_send[ValueError] = True
         return default_price
 

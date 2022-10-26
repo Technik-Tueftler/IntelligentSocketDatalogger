@@ -30,11 +30,11 @@ class LogLevel:
     """
 
     log_levels = {
-        "debug": LoggingLevel.DEBUG,
-        "info": LoggingLevel.INFO,
-        "warning": LoggingLevel.WARNING,
-        "error": LoggingLevel.ERROR,
-        "critical": LoggingLevel.CRITICAL,
+        "debug": LoggingLevel.DEBUG.value,
+        "info": LoggingLevel.INFO.value,
+        "warning": LoggingLevel.WARNING.value,
+        "error": LoggingLevel.ERROR.value,
+        "critical": LoggingLevel.CRITICAL.value,
     }
     config_level: str = logging.CRITICAL
     try:
