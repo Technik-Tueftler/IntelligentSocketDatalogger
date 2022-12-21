@@ -1,11 +1,12 @@
+# pylint: skip-file
+
 import time
 import urequests
 from machine import Pin, ADC
 import _thread
+import parameter
 
-UPDATE_TIME = 60
-CONVERSION_FACTOR_METER = 10
-URL = "http://192.168.178.39:8086/write?db=test"
+URL = f'http://192.168.178.39:8086/write?db={parameter.DB_NAME}'
 
 print("Start main programm")
 
@@ -36,7 +37,7 @@ def count_pulses():
             if not led_value:
                 print("Neuer Wert")
                 communication["counted_pulses"] += 1
-                #
+
 
         led_value_ll = led_value
         transmitted_ll = communication["toggle_transmitted_flag"]
@@ -50,12 +51,12 @@ latch_energy_wh_after_crash = 0
 while communication["running"]:
     try:
         end_measurement_time = time.time()
-        while ((end_measurement_time - start_measurement_time) < UPDATE_TIME):
+        while ((end_measurement_time - start_measurement_time) < parameter.UPDATE_TIME):
             end_measurement_time = time.time()
             time.sleep(0.1)
         print("Datenbankeintrag")
         impulses = communication["counted_pulses"]
-        energy_wh = impulses / CONVERSION_FACTOR_METER
+        energy_wh = impulses / parameter.CONVERSION_FACTOR_METER
         power = (energy_wh * 60 * 60)/60
         print(impulses)
         print(energy_wh)
