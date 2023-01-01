@@ -55,7 +55,7 @@ In order to adapt the project to the own conceptions, two configuration files ar
 {
   "general":
   {
-    "log_level": "info"
+    "log_level": "info",
     "cost_calc_request_time": "00:00",
     "price_kwh": 0.296
   }
@@ -78,8 +78,8 @@ In order to adapt the project to the own conceptions, two configuration files ar
   "Herd":
   {
     "ip": "192.168.178.201",
-    "update_time": 30
-    "cost_calc_day": true,
+    "update_time": 30,
+    "cost_calc_day": true
   }
 }
 ````
