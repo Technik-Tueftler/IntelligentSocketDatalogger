@@ -78,8 +78,8 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
   "Herd":
   {
     "ip": "192.168.178.201",
-    "update_time": 30
-    "cost_calc_day": true,
+    "update_time": 30,
+    "cost_calc_day": true
   }
 }
 ````
