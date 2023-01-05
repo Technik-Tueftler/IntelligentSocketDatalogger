@@ -55,7 +55,7 @@ In order to adapt the project to the own conceptions, two configuration files ar
 {
   "general":
   {
-    "log_level": "info"
+    "log_level": "info",
     "cost_calc_request_time": "00:00",
     "price_kwh": 0.296
   }
@@ -78,8 +78,8 @@ In order to adapt the project to the own conceptions, two configuration files ar
   "Herd":
   {
     "ip": "192.168.178.201",
-    "update_time": 30
-    "cost_calc_day": true,
+    "update_time": 30,
+    "cost_calc_day": true
   }
 }
 ````
@@ -89,6 +89,9 @@ In order to adapt the project to the own conceptions, two configuration files ar
 `cost_day:` Enables the feature that once a day the total costs and work of the device for the last 24 hours are stored. The time when the process should start is set here. The formatting is: `HH:MM`. It is also indicated how many measured values are missing for an estimation, which quality the value has. The time depends on the setting on the server.  
 `cost_calc_month:` Activates the feature that once a month the total costs and the work of the device are calculated. The execution day in the month is set here.  
 `cost_calc_year:` Activates the feature that once a year the total costs and the work of the device are calculated. The execution day and month are set here.  
+
+### ISDL Config Editor
+If you are not familiar with the json formatting, you can use [ISDL Config Editor](isdledit.jojojux.de/editor) to create the config files in a graphical user interface.
 
 ## Docker Compose Example
 ````commandline

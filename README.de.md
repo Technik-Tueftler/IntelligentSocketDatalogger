@@ -78,8 +78,8 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
   "Herd":
   {
     "ip": "192.168.178.201",
-    "update_time": 30
-    "cost_calc_day": true,
+    "update_time": 30,
+    "cost_calc_day": true
   }
 }
 ````
@@ -89,6 +89,9 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
 `cost_calc_day:` Aktiviert das Feature, dass einmal am Tag die gesamten Kosten und die Arbeit des Gerätes für die letzten 24 Stunden abgelegt werden.  
 `cost_calc_month:` Aktiviert das Feature, dass einmal im Monat die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag im Monat.  
 `cost_calc_year:` Aktiviert das Feature, dass einmal im Jahr die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag und Monat.  
+
+### ISDL Config Editor
+Wan man sich mit dem json format nicht do gut auskennt, kann man [ISDL Config Editor](isdledit.jojojux.de/editor) benutzen, um die Konfigurationsdateien in einer grafischen Benutzeroberfläche erstellen und bearbeiten kann.
 
 ## Docker Compose Beispiel
 ````commandline
