@@ -90,6 +90,9 @@ In order to adapt the project to the own conceptions, two configuration files ar
 `cost_calc_month:` Activates the feature that once a month the total costs and the work of the device are calculated. The execution day in the month is set here.  
 `cost_calc_year:` Activates the feature that once a year the total costs and the work of the device are calculated. The execution day and month are set here.  
 
+### ISDL Config Editor
+If you are not familiar with the json formatting, you can use [ISDL Config Editor](isdledit.jojojux.de/editor) to create the config files in a graphical user interface.
+
 ## Docker Compose Example
 ````commandline
 version: "2"
