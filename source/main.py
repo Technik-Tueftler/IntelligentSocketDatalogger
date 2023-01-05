@@ -12,11 +12,11 @@ from datetime import datetime
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 
+from supported_devices import plugins
 from source import support_functions
 from source import cost_calculation as cc
 from source import logging_helper as lh
 from source.constants import DEVICES_FILE_PATH
-from supported_devices import plugins
 
 
 def fetch_device_data(device_name: str, settings: dict) -> None:
@@ -35,7 +35,7 @@ def fetch_device_data(device_name: str, settings: dict) -> None:
         print(err)
         error_message = (
             f'Error occurred during fetch data from {device_name} with type: {settings["type"] }'
-            f'with key-error. Is the handler available for this type?'
+            f"with key-error. Is the handler available for this type?"
         )
         lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
