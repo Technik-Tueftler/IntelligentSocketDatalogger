@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Hallo
 """
 This module contains all the handlers needed for Shelly intelligent sockets.
 """

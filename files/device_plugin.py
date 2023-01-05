@@ -3,10 +3,6 @@
 """
 The module includes all the handler to register any sockets that the user wants to have.
 """
-import urllib.request
-from urllib.error import HTTPError, URLError
-from datetime import datetime
-import json
 
 
 def setup(plugins) -> None:
@@ -16,43 +12,24 @@ def setup(plugins) -> None:
     to the app, as long as the device provides an interface.
     :param plugins: Collection of all possible devices that have been registered.
     :return: None
+
+    Check implemented devices in source/devices_shelly.py as example
     """
     @plugins.register("intelligent_socket:version-7")
     def handler(settings):   # pylint: disable=function-redefined
-        device_name = settings["device_name"]
-        # request url under which the socket can be reached
-        request_url = "http://" + settings["ip"] + "/status"
-        try:
-            with urllib.request.urlopen(request_url, timeout=10) as url:
-                # Response of the device as an example in which the data are stored as json.
-                data = json.loads(url.read().decode())
-                # Parsing the data into the format for the database.
-                # All shown tags and fields are necessary to provide all functionalities.
-                device_data = [
-                    {
-                        "measurement": "census",
-                        "tags": {"device": device_name},
-                        "time": datetime.utcnow(),
-                        "fields": {
-                            "power": data["meters"][0]["power"],
-                            "is_valid": data["meters"][0]["is_valid"],
-                            "fetch_success": True,
-                            "energy_wh": data["meters"][0]["power"]
-                            * settings["update_time"]
-                            / 3600,
-                        },
-                    }
-                ]
-                return device_data
-        except (HTTPError, URLError, ConnectionResetError, TimeoutError) as err:
-            # Error handling, if the device does not respond.
-            print(err)
-            device_data = [
-                {
-                    "measurement": "census",
-                    "tags": {"device": device_name},
-                    "time": datetime.utcnow(),
-                    "fields": {"fetch_success": False},
-                }
-            ]
-            return device_data
+        # Get device name with:
+        _ = settings["device_name"]
+        # request url under which the socket can be reached e.g.
+            # --> request_url = "http://" + settings["ip"] + "/status"
+            # with <urllib.request>
+        # Edit returned data from device and return:
+            # Parsing the data into the format for the database.
+            # All shown tags and fields are necessary to provide all functionalities.
+                # "measurement": "census",
+                # "tags": {"device": device_name},
+                # "time": timestamp in UTC of the measurement with datetime.utcnow(),
+                # "fields": {
+                    # "power": value of power in W,
+                    # "fetch_success": must contain an fetch_succes key being a boolean,
+                        # saying if the request succeeded or not
+                    # "energy_wh": converted power into energy in Wh
