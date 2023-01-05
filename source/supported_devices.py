@@ -4,7 +4,7 @@
 This module contains all necessary functions and classes to integrate
 the plugin concept.
 """
-from devices_shelly import setup
+from source.devices_shelly import setup
 
 
 class Collection:

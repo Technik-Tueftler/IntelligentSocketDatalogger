@@ -12,7 +12,7 @@ from datetime import datetime
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 
-from supported_devices import plugins
+from source.supported_devices import plugins
 from source import support_functions
 from source import cost_calculation as cc
 from source import logging_helper as lh
