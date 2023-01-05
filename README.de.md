@@ -90,6 +90,9 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
 `cost_calc_month:` Aktiviert das Feature, dass einmal im Monat die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag im Monat.  
 `cost_calc_year:` Aktiviert das Feature, dass einmal im Jahr die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag und Monat.  
 
+### ISDL Config Editor
+Wan man sich mit dem json format nicht do gut auskennt, kann man [ISDL Config Editor](isdledit.jojojux.de/editor) benutzen, um die Konfigurationsdateien in einer grafischen Benutzeroberfläche erstellen und bearbeiten kann.
+
 ## Docker Compose Beispiel
 ````commandline
 version: "2"
