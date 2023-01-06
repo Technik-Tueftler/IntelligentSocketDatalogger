@@ -19,23 +19,22 @@ from source import logging_helper as lh
 from source.constants import DEVICES_FILE_PATH
 
 
-def fetch_device_data(device_name: str, settings: dict) -> None:
+def fetch_device_data(settings: dict) -> None:
     """
     Call up data page of the transferred device. Save the energy and device
     temperature to an InfluxDB.
-    :param device_name: Transferred device name
     :param settings: Settings of the transferred device
     :return: None
     """
-    device_settings = settings | {"device_name": device_name}
     try:
-        device_data = plugins[settings["type"]](device_settings)
-        write_data(device_name, device_data)
+        device_data = plugins[settings["type"]](settings)
+        write_data(settings["device_name"], device_data)
     except KeyError as err:
         print(err)
         error_message = (
-            f'Error occurred during fetch data from {device_name} with type: {settings["type"] }'
-            f"with key-error. Is the handler available for this type?"
+            f'Error occurred during fetch data from {settings["device_name"]} with '
+            f'type: {settings["type"]} with key-error. Is the handler available '
+            f'for this type?'
         )
         lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
@@ -69,13 +68,15 @@ def main() -> None:
     """
     try:
         data = {}
+        keys = ["ip", "update_time", "type"]
         with open(DEVICES_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
         request_start_time = cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
-            if ("ip" and "update_time" and "type") in settings:
+            if all(key in settings for key in keys):
+                device_settings = settings | {"device_name": device_name}
                 schedule.every(settings["update_time"]).seconds.do(
-                    fetch_device_data, device_name, settings
+                    fetch_device_data, device_settings
                 )
             cost_calc_requested = cc.check_cost_calc_requested(settings)
             if cost_calc_requested["start_schedule_task"] is True:
