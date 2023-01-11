@@ -4,79 +4,39 @@
 Main function for cyclic call of all set devices and capture of the energy and the
 device temperature.
 """
-import os
 import sys
 import json
 import time
-import urllib.request
-from urllib.error import HTTPError, URLError
 from datetime import datetime
 
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 
+from source.supported_devices import plugins
 from source import support_functions
 from source import cost_calculation as cc
 from source import logging_helper as lh
-from source.constants import DEVICES_FILE_PATH, TIMEOUT_RESPONSE_TIME
-
-# D:\Workspace\git\ShellyPlugDatalogger
-# D:\Workspace\git\ShellyPlugDatalogger\source
-# sys.path.append(r"D:\Workspace\git\ShellyPlugDatalogger")
-print("----------------")
-print(os.getcwd())
-print("----------------")
-for p in sys.path:
-    print(p)
+from source.constants import DEVICES_FILE_PATH
 
 
-def fetch_shelly_data(device_name: str, settings: dict) -> None:
+def fetch_device_data(settings: dict) -> None:
     """
     Call up data page of the transferred device. Save the energy and device
     temperature to an InfluxDB.
-    :param device_name: Transferred device name
     :param settings: Settings of the transferred device
     :return: None
     """
-    request_url = "http://" + settings["ip"] + "/status"
-    device_data = []
     try:
-        with urllib.request.urlopen(request_url, timeout=TIMEOUT_RESPONSE_TIME) as url:
-            data = json.loads(url.read().decode())
-            # Jedes Tag abfragen, ob es wirklich vorhanden ist und nur dann eintragen. So
-            # könnten mehr Steckdosen unterstützt werden.
-            device_data = [
-                {
-                    "measurement": "census",
-                    "tags": {"device": device_name},
-                    "time": datetime.utcnow(),
-                    "fields": {
-                        "power": data["meters"][0]["power"],
-                        "is_valid": data["meters"][0]["is_valid"],
-                        "device_temperature": data["temperature"],
-                        "fetch_success": True,
-                        "energy_wh": data["meters"][0]["power"]
-                        * settings["update_time"]
-                        / 3600,
-                    },
-                }
-            ]
-    except (HTTPError, URLError, ConnectionResetError, TimeoutError) as err:
+        device_data = plugins[settings["type"]](settings)
+        write_data(settings["device_name"], device_data)
+    except KeyError as err:
+        print(err)
         error_message = (
-            f"Error occurred while fetching data from {device_name} with error "
-            f"message: {err}."
+            f'Error occurred during fetch data from {settings["device_name"]} with '
+            f'type: {settings["type"]} with key-error. Is the handler available '
+            f"for this type?"
         )
         lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
-        device_data = [
-            {
-                "measurement": "census",
-                "tags": {"device": device_name},
-                "time": datetime.utcnow(),
-                "fields": {"fetch_success": False},
-            }
-        ]
-    finally:
-        write_data(device_name, device_data)
 
 
 def write_data(device_name: str, device_data: list) -> None:
@@ -108,13 +68,18 @@ def main() -> None:
     """
     try:
         data = {}
+        keys = ["ip", "update_time", "type"]
         with open(DEVICES_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
         request_start_time = cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
-            if "ip" in settings and "update_time" in settings:
+            if all(key in settings for key in keys):
+                device_settings = settings | {
+                    "device_name": device_name,
+                    "watch_hen": lh.WatchHen(device_name=device_name),
+                }
                 schedule.every(settings["update_time"]).seconds.do(
-                    fetch_shelly_data, device_name, settings
+                    fetch_device_data, device_settings
                 )
             cost_calc_requested = cc.check_cost_calc_requested(settings)
             if cost_calc_requested["start_schedule_task"] is True:
