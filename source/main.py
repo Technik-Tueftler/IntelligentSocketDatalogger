@@ -34,7 +34,7 @@ def fetch_device_data(settings: dict) -> None:
         error_message = (
             f'Error occurred during fetch data from {settings["device_name"]} with '
             f'type: {settings["type"]} with key-error. Is the handler available '
-            f'for this type?'
+            f"for this type?"
         )
         lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
@@ -74,7 +74,10 @@ def main() -> None:
         request_start_time = cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
             if all(key in settings for key in keys):
-                device_settings = settings | {"device_name": device_name}
+                device_settings = settings | {
+                    "device_name": device_name,
+                    "watch_hen": lh.WatchHen(device_name=device_name),
+                }
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_device_data, device_settings
                 )
