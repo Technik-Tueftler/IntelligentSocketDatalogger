@@ -15,36 +15,54 @@ from source.constants import CONFIGURATION_FILE_PATH, LOGGING_MAX_LEN_FAILURE
 
 @dataclass
 class WatchHen:
+    """
+    Helper class to log all errors of the given device.
+    """
     device_name: str
     online_status: bool = field(default=True)
+    failure_count: int = field(default=0)
     last_failures: deque = field(
         default_factory=lambda: deque(maxlen=LOGGING_MAX_LEN_FAILURE)
     )
 
-    def normal_processing(self):
+    def normal_processing(self) -> None:
+        """
+        Function is called if no errors are appeared from fetching data to saving in database.
+        :return: None
+        """
         if not self.online_status:
             self.online_status = True
             self.last_failures.clear()
-            message = f"Device {self.device_name} online again."
-            logging.log(logging.Info, message)
+            message = (
+                f"Device {self.device_name} online again. {self.failure_count} errors "
+                f"occurred during offline status."
+            )
+            logging.log(logging.INFO, message)
 
-    def failure_processing(self, error_type, error_message, error_context):
+    def failure_processing(self, error_type, error_message, error_context) -> None:
+        """
+        This function is called every time an error appears for a device.
+        :param error_type: Type of the error for counting
+        :param error_message: Error message
+        :param error_context: Special context where error is appears
+        :return: None
+        """
+        self.failure_count += 1
         self.last_failures.append(
             Failure(error_type=error_type, message=error_message, context=error_context)
         )
         count_simular_failure = len(
-            [
-                True
-                for element in self.last_failures
-                if element.error_type == error_type
-            ]
+            [True for element in self.last_failures if element.error_type == error_type]
         )
         message = f"{self.device_name} {error_context} | {error_type} | {error_message}"
         logging.log(logging.DEBUG, message)
         if count_simular_failure == 1:
             logging.log(logging.WARNING, message)
         elif count_simular_failure == 2:
-            message = f"Device {self.device_name} {error_context} multiple times and was marked as offline."
+            message = (
+                f"Device {self.device_name} {error_context} multiple times and was marked "
+                f"as offline."
+            )
             logging.log(logging.ERROR, message)
             self.online_status = False
         else:
@@ -56,6 +74,9 @@ class WatchHen:
 
 @dataclass
 class Failure:
+    """
+    Helper class to collect all information for each failure
+    """
     error_type: None
     message: str  # Gibt z.B. bei Key Error den fehlerhaften Key mit
     context: str

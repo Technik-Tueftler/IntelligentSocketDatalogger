@@ -28,21 +28,18 @@ def fetch_device_data(settings: dict) -> None:
     """
     try:
         device_data = plugins[settings["type"]](settings)
-        write_data(settings["device_name"], device_data)
+        write_data(settings, device_data)
+        settings["watch_hen"].normal_processing()
     except KeyError as err:
-        print(err)
-        error_message = (
-            f'Error occurred during fetch data from {settings["device_name"]} with '
-            f'type: {settings["type"]} with key-error. Is the handler available '
-            f"for this type?"
+        settings["watch_hen"].failure_processing(
+            type(err).__name__, err, "- handler is not implemented in plugin file."
         )
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
 
-def write_data(device_name: str, device_data: list) -> None:
+def write_data(settings: dict, device_data: list) -> None:
     """
     Write fetched data to Db with own context manager.
-    :param device_name: Transferred device name
+    :param settings: Settings of the transferred device
     :param device_data: fetched data
     :return: None
     """
@@ -50,15 +47,15 @@ def write_data(device_name: str, device_data: list) -> None:
         with support_functions.InfluxDBConnection() as conn:
             conn.switch_database(support_functions.login_information.db_name)
             conn.write_points(device_data)
+            settings["watch_hen"].normal_processing()
     except InfluxDBClientError as err:
-        error_message = f"Error occurred during data saving with error message: {err}."
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
-    except ConnectionError as err:
-        error_message = (
-            f"Error occurred during connecting to the database from {device_name} "
-            f"with error message: {err}"
+        settings["watch_hen"].failure_processing(
+            type(err).__name__, err, "- data could not be saved to database."
         )
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
+    except ConnectionError as err:
+        settings["watch_hen"].failure_processing(
+            type(err).__name__, err, "- no connection to database."
+        )
 
 
 def main() -> None:
@@ -97,7 +94,7 @@ def main() -> None:
         error_message = (
             f"The configuration file for the devices could not be found: {err}"
         )
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
+        lh.write_log(lh.LoggingLevel.CRITICAL.value, error_message)
         sys.exit(0)
 
 

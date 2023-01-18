@@ -8,7 +8,6 @@ import urllib.request
 from urllib.error import HTTPError, URLError
 from datetime import datetime
 from source.constants import TIMEOUT_RESPONSE_TIME
-from source import logging_helper as lh
 
 
 def setup(plugins) -> None:
@@ -45,13 +44,12 @@ def setup(plugins) -> None:
                         },
                     }
                 ]
+                settings["watch_hen"].normal_processing()
                 return device_data
         except (HTTPError, URLError, ConnectionResetError, TimeoutError) as err:
-            error_message = (
-                f"Error occurred while fetching data from {device_name} with error "
-                f"message: {err}."
+            settings["watch_hen"].failure_processing(
+                type(err).__name__, err, "could not be reached"
             )
-            lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
             device_data = [
                 {
                     "measurement": "census",
@@ -136,8 +134,6 @@ def setup(plugins) -> None:
                 }
             ]
             return device_data
-        finally:
-            print(settings["watch_hen"])
 
 
 def main() -> None:
