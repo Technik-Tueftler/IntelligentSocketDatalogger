@@ -18,6 +18,9 @@ from source import cost_calculation as cc
 from source import logging_helper as lh
 from source.constants import DEVICES_FILE_PATH
 
+fetch_watch_hen = lh.WatchHen(device_name="fetch_handler")
+write_watch_hen = lh.WatchHen(device_name="write_handler")
+
 
 def fetch_device_data(settings: dict) -> None:
     """
@@ -28,32 +31,33 @@ def fetch_device_data(settings: dict) -> None:
     """
     try:
         device_data = plugins[settings["type"]](settings)
-        write_data(settings, device_data)
-        settings["watch_hen"].normal_processing()
+        write_data(device_data)
+        fetch_watch_hen.normal_processing()
     except KeyError as err:
-        settings["watch_hen"].failure_processing(
-            type(err).__name__, err, "- handler is not implemented in plugin file."
+        fetch_watch_hen.failure_processing(
+            type(err).__name__,
+            err,
+            f'- handler for {settings["device_name"]} is not implemented in plugin file.',
         )
 
 
-def write_data(settings: dict, device_data: list) -> None:
+def write_data(device_data: list) -> bool:
     """
     Write fetched data to Db with own context manager.
-    :param settings: Settings of the transferred device
     :param device_data: fetched data
-    :return: None
+    :return: Feedback if write to database was successful
     """
     try:
         with support_functions.InfluxDBConnection() as conn:
             conn.switch_database(support_functions.login_information.db_name)
             conn.write_points(device_data)
-            settings["watch_hen"].normal_processing()
+            write_watch_hen.normal_processing()
     except InfluxDBClientError as err:
-        settings["watch_hen"].failure_processing(
+        write_watch_hen.failure_processing(
             type(err).__name__, err, "- data could not be saved to database."
         )
     except ConnectionError as err:
-        settings["watch_hen"].failure_processing(
+        write_watch_hen.failure_processing(
             type(err).__name__, err, "- no connection to database."
         )
 

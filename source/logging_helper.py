@@ -18,6 +18,7 @@ class WatchHen:
     """
     Helper class to log all errors of the given device.
     """
+
     device_name: str
     online_status: bool = field(default=True)
     failure_count: int = field(default=0)
@@ -77,6 +78,7 @@ class Failure:
     """
     Helper class to collect all information for each failure
     """
+
     error_type: None
     message: str  # Gibt z.B. bei Key Error den fehlerhaften Key mit
     context: str
