@@ -103,7 +103,7 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
 `cost_calc_year:` Aktiviert das Feature, dass einmal im Jahr die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag und Monat.  
 
 ### ISDL Config Editor
-Wan man sich mit dem json format nicht do gut auskennt, kann man [ISDL Config Editor](isdledit.jojojux.de/editor) benutzen, um die Konfigurationsdateien in einer grafischen Benutzeroberfläche erstellen und bearbeiten kann.
+Für ein einfaches erstellen der Konfigurationsdateien auf den eigenen Aufbau, gibt es unter [ISDL Config Editor](isdledit.jojojux.de/editor) eine grafische Benutzeroberfläche. Hier kann über ein Eingebefenster z.B. der Preis/kWh eingestellt und am Ende die fertig formatierte Konfigurationsdatei heruntergeladen werden. Auch können alle Steckdosen einzel hinzugefügt werden mit den nötigen Einstellungen. Das erleichtert das Einstellen und verhindert Formatierungsfehler.
 
 ## Docker Compose Beispiel
 ````commandline
