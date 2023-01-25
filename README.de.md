@@ -90,7 +90,7 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
     "type": "shelly:3em",
     "ip": "192.168.178.201",
     "update_time": 30,
-    "cost_calc_day": true,
+    "cost_calc_day": true
   }
 }
 ````
@@ -101,6 +101,9 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
 `cost_calc_day:` Aktiviert das Feature, dass einmal am Tag die gesamten Kosten und die Arbeit des Gerätes für die letzten 24 Stunden abgelegt werden. Der Zeitpunkt wird in der __config.json__ mit dem Parameter __cost_calc_request_time__ festgelegt.  
 `cost_calc_month:` Aktiviert das Feature, dass einmal im Monat die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag im Monat.  
 `cost_calc_year:` Aktiviert das Feature, dass einmal im Jahr die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag und Monat.  
+
+### ISDL Config Editor
+Für ein einfaches erstellen der Konfigurationsdateien auf den eigenen Aufbau, gibt es unter [ISDL Config Editor](isdledit.jojojux.de/editor) eine grafische Benutzeroberfläche. Hier kann über ein Eingebefenster z.B. der Preis/kWh eingestellt und am Ende die fertig formatierte Konfigurationsdatei heruntergeladen werden. Auch können alle Steckdosen einzel hinzugefügt werden mit den nötigen Einstellungen. Das erleichtert das Einstellen und verhindert Formatierungsfehler.
 
 ## Docker Compose Beispiel
 ````commandline
