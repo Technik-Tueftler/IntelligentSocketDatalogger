@@ -101,7 +101,8 @@ In order to adapt the project to the own conceptions, two configuration files ar
 `cost_calc_year:` Activates the feature that once a year the total costs and the work of the device are calculated. The execution day and month are set here.
 
 ### ISDL Config Editor
-If you are not familiar with the json formatting, you can use [ISDL Config Editor](isdledit.jojojux.de/editor) to create the config files in a graphical user interface.
+For a simple creating of the configuration files, there is under [ISDL Config Editor](isdledit.jojojux.de/editor) a graphic user interface. Here can be set over a input window e.g. the price/kWh and downloaded at the end the ready formatted configuration file. Also all sockets can be added individually with the necessary settings. This facilitates the setting and prevents formatting mistakes.
+
 
 ## Docker Compose Example
 ````commandline
