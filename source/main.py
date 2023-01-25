@@ -4,85 +4,46 @@
 Main function for cyclic call of all set devices and capture of the energy and the
 device temperature.
 """
-import os
 import sys
 import json
 import time
-import urllib.request
-from urllib.error import HTTPError, URLError
 from datetime import datetime
 
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 
+from source.supported_devices import plugins
 from source import support_functions
 from source import cost_calculation as cc
 from source import logging_helper as lh
-from source.constants import DEVICES_FILE_PATH, TIMEOUT_RESPONSE_TIME
+from source.constants import DEVICES_FILE_PATH
 
-# D:\Workspace\git\ShellyPlugDatalogger
-# D:\Workspace\git\ShellyPlugDatalogger\source
-# sys.path.append(r"D:\Workspace\git\ShellyPlugDatalogger")
-print("----------------")
-print(os.getcwd())
-print("----------------")
-for p in sys.path:
-    print(p)
+write_watch_hen = lh.WatchHen(device_name="write_handler")
 
 
-def fetch_shelly_data(device_name: str, settings: dict) -> None:
+def fetch_device_data(settings: dict) -> None:
     """
     Call up data page of the transferred device. Save the energy and device
     temperature to an InfluxDB.
-    :param device_name: Transferred device name
     :param settings: Settings of the transferred device
     :return: None
     """
-    request_url = "http://" + settings["ip"] + "/status"
-    device_data = []
     try:
-        with urllib.request.urlopen(request_url, timeout=TIMEOUT_RESPONSE_TIME) as url:
-            data = json.loads(url.read().decode())
-            # Jedes Tag abfragen, ob es wirklich vorhanden ist und nur dann eintragen. So
-            # könnten mehr Steckdosen unterstützt werden.
-            device_data = [
-                {
-                    "measurement": "census",
-                    "tags": {"device": device_name},
-                    "time": datetime.utcnow(),
-                    "fields": {
-                        "power": data["meters"][0]["power"],
-                        "is_valid": data["meters"][0]["is_valid"],
-                        "device_temperature": data["temperature"],
-                        "fetch_success": True,
-                        "energy_wh": data["meters"][0]["power"]
-                        * settings["update_time"]
-                        / 3600,
-                    },
-                }
-            ]
-    except (HTTPError, URLError, ConnectionResetError, TimeoutError) as err:
-        error_message = (
-            f"Error occurred while fetching data from {device_name} with error "
-            f"message: {err}."
+        device_data = plugins[settings["type"]](settings)
+        write_data(device_data)
+        if device_data[0]["fields"]["fetch_success"]:
+            settings["watch_hen"].normal_processing()
+    except KeyError as err:
+        settings["watch_hen"].failure_processing(
+            type(err).__name__,
+            err,
+            f'- handler for {settings["device_name"]} is not implemented in plugin file.',
         )
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
-        device_data = [
-            {
-                "measurement": "census",
-                "tags": {"device": device_name},
-                "time": datetime.utcnow(),
-                "fields": {"fetch_success": False},
-            }
-        ]
-    finally:
-        write_data(device_name, device_data)
 
 
-def write_data(device_name: str, device_data: list) -> None:
+def write_data(device_data: list):
     """
     Write fetched data to Db with own context manager.
-    :param device_name: Transferred device name
     :param device_data: fetched data
     :return: None
     """
@@ -90,15 +51,15 @@ def write_data(device_name: str, device_data: list) -> None:
         with support_functions.InfluxDBConnection() as conn:
             conn.switch_database(support_functions.login_information.db_name)
             conn.write_points(device_data)
+            write_watch_hen.normal_processing()
     except InfluxDBClientError as err:
-        error_message = f"Error occurred during data saving with error message: {err}."
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
-    except ConnectionError as err:
-        error_message = (
-            f"Error occurred during connecting to the database from {device_name} "
-            f"with error message: {err}"
+        write_watch_hen.failure_processing(
+            type(err).__name__, err, "- data could not be saved to database."
         )
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
+    except ConnectionError as err:
+        write_watch_hen.failure_processing(
+            type(err).__name__, err, "- no connection to database."
+        )
 
 
 def main() -> None:
@@ -108,13 +69,18 @@ def main() -> None:
     """
     try:
         data = {}
+        keys = ["ip", "update_time", "type"]
         with open(DEVICES_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
         request_start_time = cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
-            if "ip" in settings and "update_time" in settings:
+            if all(key in settings for key in keys):
+                device_settings = settings | {
+                    "device_name": device_name,
+                    "watch_hen": lh.WatchHen(device_name=device_name),
+                }
                 schedule.every(settings["update_time"]).seconds.do(
-                    fetch_shelly_data, device_name, settings
+                    fetch_device_data, device_settings
                 )
             cost_calc_requested = cc.check_cost_calc_requested(settings)
             if cost_calc_requested["start_schedule_task"] is True:
@@ -132,7 +98,7 @@ def main() -> None:
         error_message = (
             f"The configuration file for the devices could not be found: {err}"
         )
-        lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
+        lh.write_log(lh.LoggingLevel.CRITICAL.value, error_message)
         sys.exit(0)
 
 
