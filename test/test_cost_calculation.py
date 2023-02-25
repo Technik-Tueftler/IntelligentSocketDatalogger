@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pytest
 
-from source.cost_calculation import (
+from source.calculations import (
     last_day_of_month,
     check_month_parameter,
     check_day_parameter,

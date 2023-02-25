@@ -9,36 +9,39 @@ import json
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from source.constants import CONFIGURATION_FILE_PATH
+from source.constants import CONFIGURATION_FILE_PATH, TIME_OF_DAY_SCHEDULE_MATCH, \
+    DAY_OF_MONTH_SCHEDULE_MATCH, DATE_OF_YEAR_SCHEDULE_MATCH
 from source import support_functions as sf
 from source import logging_helper as lh
 
-TIME_OF_DAY_SCHEDULE_MATCH = r"^(?:[01]\d|2[0-3]):(?:[0-5]\d)$"
-DAY_OF_MONTH_SCHEDULE_MATCH = r"^[\d]{2}$"
-DATE_OF_YEAR_SCHEDULE_MATCH = r"^[\d]{2}[.][\d]{2}$"
 TIMESTAMP_FORMAT_INPUT = "%Y-%m-%dT%H:%M:%S.%fZ"
 TIMESTAMP_FORMAT_OUTPUT = "%Y-%m-%dT%H:%M:%S"
 configuration_failed_message_send = {"FileNotFoundError": False, "ValueError": False}
+config_request_time = {"calc_request_time_daily": "00:00", "calc_request_time_monthly": "01",
+                       "calc_request_time_yearly": "01.01"}
+config_request_time_pattern = {"calc_request_time_daily": TIME_OF_DAY_SCHEDULE_MATCH,
+                               "calc_request_time_monthly": DAY_OF_MONTH_SCHEDULE_MATCH,
+                               "calc_request_time_yearly": DATE_OF_YEAR_SCHEDULE_MATCH}
 
 
-def check_cost_calc_request_time() -> str:
+def check_cost_calc_request_time() -> None:
     """
     Check if a start time is given for cost calculation and have the right format. If something is
     wrong, a default time is returned.
     :return: Start time in string format
     """
     try:
-        checked_requested_start_time = "00:00"
         with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
-            if ("general" in data) and ("cost_calc_request_time" in data["general"]):
-                requested_start_time = data["general"]["cost_calc_request_time"]
+            if "general" not in data:
+                return
+            for key in config_request_time.keys():
+                requested_start_time = data["general"][key]
                 if (
-                    re.search(TIME_OF_DAY_SCHEDULE_MATCH, requested_start_time)
-                    is not None
+                        re.search(config_request_time_pattern[key], requested_start_time)
+                        is not None
                 ):
-                    checked_requested_start_time = requested_start_time
-        return checked_requested_start_time
+                    config_request_time[key] = requested_start_time
 
     except FileNotFoundError as err:
         error_message = (
@@ -50,7 +53,7 @@ def check_cost_calc_request_time() -> str:
         if not configuration_failed_message_send[FileNotFoundError]:
             lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
             configuration_failed_message_send[FileNotFoundError] = True
-        return checked_requested_start_time
+        return
 
 
 def check_cost_config() -> float:
@@ -93,10 +96,10 @@ def check_cost_config() -> float:
 
 
 def cost_calc(
-    device_name: str,
-    settings: dict,
-    current_timestamp: datetime,
-    time_difference: relativedelta,
+        device_name: str,
+        settings: dict,
+        current_timestamp: datetime,
+        time_difference: relativedelta,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -146,8 +149,8 @@ def cost_calc(
         "total_cost": sum_of_energy_in_kwh * cost_kwh,
         "cost_kwh": cost_kwh,
         "error_rate_one": len(failed_measurements)
-        * 100
-        / (len(success_measurements) + len(failed_measurements)),
+                          * 100
+                          / (len(success_measurements) + len(failed_measurements)),
         "error_rate_two": (max_values - len(success_measurements)) * 100 / max_values,
     }
     if time_difference.days == 1:
@@ -208,39 +211,33 @@ def check_year_parameter(day_month: str) -> dict:
     return values
 
 
-def check_cost_calc_requested(settings: dict) -> dict:
+def check_request_times():
+    pass
+
+
+def check_calc_requested(settings: dict) -> dict:
     """
-    Check if a cost calculation is requested for this device and if it has the correct formatting.
+    Check if any calculation is requested for this device and if it has the correct formatting.
     :param settings: Settings for the selected device
     :return: The requested calculations in a dict
     """
     start_schedule_task = {
         "start_schedule_task": False,
-        "cost_day": False,
-        "cost_month": None,
-        "cost_year": None,
+        # Mapping    (daily, monthly, yearly)
+        "cost_calc": [False, False, False],
+        # Mapping power on  (daily, monthly, yearly)
+        "power_on_counter": [False, False, False],
     }
-    if ("cost_calc_day" in settings) and (settings["cost_calc_day"]):
-        start_schedule_task["cost_day"] = True
-        start_schedule_task["start_schedule_task"] |= True
-    if "cost_calc_month" in settings:
-        if (
-            re.search(DAY_OF_MONTH_SCHEDULE_MATCH, settings["cost_calc_month"])
-            is not None
-        ):
-            start_schedule_task["cost_month"] = check_month_parameter(
-                settings["cost_calc_month"]
-            )
+
+    if "cost_calculation" not in settings:
+        return start_schedule_task
+    cost_calc_setting = settings["cost_calculation"]
+
+    for index, item in enumerate(["daily", "monthly", "yearly"]):
+        if cost_calc_setting.get(item, False):
+            start_schedule_task["cost_calc"][index] = True
             start_schedule_task["start_schedule_task"] |= True
-    if "cost_calc_year" in settings:
-        if (
-            re.search(DATE_OF_YEAR_SCHEDULE_MATCH, settings["cost_calc_year"])
-            is not None
-        ):
-            start_schedule_task["cost_year"] = check_year_parameter(
-                settings["cost_calc_year"]
-            )
-            start_schedule_task["start_schedule_task"] |= True
+
     return start_schedule_task
 
 
@@ -263,7 +260,7 @@ def check_matched_day(current_date: datetime, target_day: int) -> bool:
 
 
 def check_matched_day_and_month(
-    current_date: datetime, target_day: int, target_month: int
+        current_date: datetime, target_day: int, target_month: int
 ) -> bool:
     """
     Checks if the current day and month matches the set date. In addition, if the set day is not
@@ -279,42 +276,60 @@ def check_matched_day_and_month(
     return False
 
 
-def cost_calc_handler(
-    device_name: str,
-    settings: dict,
-    cost_calc_requested: dict,
+def calculation_handler(
+        settings: dict,
+        calc_requested: dict,
 ) -> None:
     """
     Check with costs are requested and call the correct calculations.
-    :param device_name: Name of the device
     :param settings: device parameters
-    :param cost_calc_requested: Structure which calculations are requested
+    :param calc_requested: Structure which calculations are requested
     :return: None
     """
-
+    data = {
+        "start_date": None,
+        "end_date": None,
+        "sum_of_energy": None,
+        "total_cost": None,
+        "cost_kwh": None,
+        "error_rate_one": None,
+        "error_rate_two": None,
+        "power_on": None
+    }
     current_timestamp = datetime.utcnow()
-    if cost_calc_requested["cost_day"]:
+    if calc_requested["cost_calc"][0]:
         cost_calc(
-            device_name,
             settings,
             current_timestamp,
             relativedelta(days=1),
+            data
         )
-    if cost_calc_requested["cost_month"] is not None:
-        if check_matched_day(current_timestamp, cost_calc_requested["cost_month"]):
+    if calc_requested["power_on_counter"][0]:
+        ...
+    # Schreiben in Textdatei für Tag
+    data = {key: None for key in data}
+    if calc_requested["cost_calc"][1]:
+        if check_matched_day(current_timestamp):
             cost_calc(
-                device_name,
                 settings,
                 current_timestamp,
                 relativedelta(months=1),
             )
-    if cost_calc_requested["cost_year"] is not None:
+    if calc_requested["power_on_counter"][1]:
+        ...
+    # Schreiben in Textdatei für Monat
+    data = {key: None for key in data}
+    if calc_requested["cost_calc"][2]:
         if check_matched_day_and_month(
-            current_timestamp,
-            cost_calc_requested["cost_year"]["day"],
-            cost_calc_requested["cost_year"]["month"],
+                current_timestamp,
+                cost_calc_requested["cost_year"]["day"],
+                cost_calc_requested["cost_year"]["month"],
         ):
-            cost_calc(device_name, settings, current_timestamp, relativedelta(years=1))
+            cost_calc(settings, current_timestamp, relativedelta(years=1))
+
+    if calc_requested["power_on_counter"][2]:
+        ...
+    # Schreiben in Textdatei für Jahr
 
 
 def main() -> None:
