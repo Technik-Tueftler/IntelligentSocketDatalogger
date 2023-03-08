@@ -9,19 +9,28 @@ import json
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from source.constants import CONFIGURATION_FILE_PATH, TIME_OF_DAY_SCHEDULE_MATCH, \
-    DAY_OF_MONTH_SCHEDULE_MATCH, DATE_OF_YEAR_SCHEDULE_MATCH
+from source.constants import (
+    CONFIGURATION_FILE_PATH,
+    TIME_OF_DAY_SCHEDULE_MATCH,
+    DAY_OF_MONTH_SCHEDULE_MATCH,
+    DATE_OF_YEAR_SCHEDULE_MATCH,
+)
 from source import support_functions as sf
 from source import logging_helper as lh
 
 TIMESTAMP_FORMAT_INPUT = "%Y-%m-%dT%H:%M:%S.%fZ"
 TIMESTAMP_FORMAT_OUTPUT = "%Y-%m-%dT%H:%M:%S"
 configuration_failed_message_send = {"FileNotFoundError": False, "ValueError": False}
-config_request_time = {"calc_request_time_daily": "00:00", "calc_request_time_monthly": "01",
-                       "calc_request_time_yearly": "01.01"}
-config_request_time_pattern = {"calc_request_time_daily": TIME_OF_DAY_SCHEDULE_MATCH,
-                               "calc_request_time_monthly": DAY_OF_MONTH_SCHEDULE_MATCH,
-                               "calc_request_time_yearly": DATE_OF_YEAR_SCHEDULE_MATCH}
+config_request_time = {
+    "calc_request_time_daily": "00:00",
+    "calc_request_time_monthly": "01",
+    "calc_request_time_yearly": "01.01",
+}
+config_request_time_pattern = {
+    "calc_request_time_daily": TIME_OF_DAY_SCHEDULE_MATCH,
+    "calc_request_time_monthly": DAY_OF_MONTH_SCHEDULE_MATCH,
+    "calc_request_time_yearly": DATE_OF_YEAR_SCHEDULE_MATCH,
+}
 
 
 def check_cost_calc_request_time() -> None:
@@ -35,11 +44,11 @@ def check_cost_calc_request_time() -> None:
             data = json.load(file)
             if "general" not in data:
                 return
-            for key in config_request_time.keys():
+            for key in config_request_time:
                 requested_start_time = data["general"][key]
                 if (
-                        re.search(config_request_time_pattern[key], requested_start_time)
-                        is not None
+                    re.search(config_request_time_pattern[key], requested_start_time)
+                    is not None
                 ):
                     config_request_time[key] = requested_start_time
 
@@ -96,15 +105,15 @@ def check_cost_config() -> float:
 
 
 def cost_calc(
-        device_name: str,
-        settings: dict,
-        current_timestamp: datetime,
-        time_difference: relativedelta,
+    settings: dict,
+    data: dict,
+    current_timestamp: datetime,
+    time_difference: relativedelta,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
-    :param device_name: Name of the device
     :param settings: device parameters
+    :param data: data structure for writing in file
     :param current_timestamp: Now date and time from request
     :param time_difference: needed time difference for calculation
     :return: None
@@ -116,7 +125,7 @@ def cost_calc(
 
     result = sf.fetch_measurements(
         {
-            "device": device_name,
+            "device": settings["device_name"],
             "target_date": start_date_format,
             "current_date": end_date_format,
         }
@@ -142,23 +151,17 @@ def cost_calc(
         return
     max_values = ((end_date - start_date).total_seconds()) / settings["update_time"]
 
-    data = {
-        "start_date": start_date_format,
-        "end_date": end_date_format,
-        "sum_of_energy": sum_of_energy_in_kwh,
-        "total_cost": sum_of_energy_in_kwh * cost_kwh,
-        "cost_kwh": cost_kwh,
-        "error_rate_one": len(failed_measurements)
-                          * 100
-                          / (len(success_measurements) + len(failed_measurements)),
-        "error_rate_two": (max_values - len(success_measurements)) * 100 / max_values,
-    }
-    if time_difference.days == 1:
-        sf.cost_logging(device_name + "_day", data)
-    elif time_difference.months == 1:
-        sf.cost_logging(device_name + "_month", data)
-    elif time_difference.years == 1:
-        sf.cost_logging(device_name + "_year", data)
+    data["start_date"] = start_date_format
+    data["end_date"] = end_date_format
+    data["sum_of_energy"] = sum_of_energy_in_kwh
+    data["total_cost"] = sum_of_energy_in_kwh * cost_kwh
+    data["cost_kwh"] = cost_kwh
+    data["error_rate_one"] = (
+        len(failed_measurements)
+        * 100
+        / (len(success_measurements) + len(failed_measurements))
+    )
+    data["error_rate_two"] = (max_values - len(success_measurements)) * 100 / max_values
 
 
 def last_day_of_month(date) -> datetime:
@@ -211,10 +214,6 @@ def check_year_parameter(day_month: str) -> dict:
     return values
 
 
-def check_request_times():
-    pass
-
-
 def check_calc_requested(settings: dict) -> dict:
     """
     Check if any calculation is requested for this device and if it has the correct formatting.
@@ -260,7 +259,7 @@ def check_matched_day(current_date: datetime, target_day: int) -> bool:
 
 
 def check_matched_day_and_month(
-        current_date: datetime, target_day: int, target_month: int
+    current_date: datetime, target_day: int, target_month: int
 ) -> bool:
     """
     Checks if the current day and month matches the set date. In addition, if the set day is not
@@ -277,8 +276,8 @@ def check_matched_day_and_month(
 
 
 def calculation_handler(
-        settings: dict,
-        calc_requested: dict,
+    settings: dict,
+    calc_requested: dict,
 ) -> None:
     """
     Check with costs are requested and call the correct calculations.
@@ -294,42 +293,44 @@ def calculation_handler(
         "cost_kwh": None,
         "error_rate_one": None,
         "error_rate_two": None,
-        "power_on": None
+        "power_on": None,
     }
     current_timestamp = datetime.utcnow()
     if calc_requested["cost_calc"][0]:
-        cost_calc(
-            settings,
-            current_timestamp,
-            relativedelta(days=1),
-            data
-        )
+        cost_calc(settings, data, current_timestamp, relativedelta(days=1))
     if calc_requested["power_on_counter"][0]:
         ...
-    # Schreiben in Textdatei für Tag
+    sf.write_device_information(settings["device_name"] + "_day", data)
+
     data = {key: None for key in data}
     if calc_requested["cost_calc"][1]:
-        if check_matched_day(current_timestamp):
+        requested_day = int(config_request_time["calc_request_time_monthly"])
+        if check_matched_day(current_timestamp, requested_day):
             cost_calc(
                 settings,
+                data,
                 current_timestamp,
                 relativedelta(months=1),
             )
     if calc_requested["power_on_counter"][1]:
         ...
-    # Schreiben in Textdatei für Monat
+    sf.write_device_information(settings["device_name"] + "_month", data)
+
     data = {key: None for key in data}
     if calc_requested["cost_calc"][2]:
+        requested_day, requested_month = config_request_time[
+            "calc_request_time_yearly"
+        ].split(".")
         if check_matched_day_and_month(
-                current_timestamp,
-                cost_calc_requested["cost_year"]["day"],
-                cost_calc_requested["cost_year"]["month"],
+            current_timestamp,
+            int(requested_day),
+            int(requested_month),
         ):
-            cost_calc(settings, current_timestamp, relativedelta(years=1))
+            cost_calc(settings, data, current_timestamp, relativedelta(years=1))
 
     if calc_requested["power_on_counter"][2]:
         ...
-    # Schreiben in Textdatei für Jahr
+    sf.write_device_information(settings["device_name"] + "_year", data)
 
 
 def main() -> None:

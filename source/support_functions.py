@@ -109,7 +109,7 @@ def check_and_verify_db_connection() -> None:
         lh.write_log(lh.LoggingLevel.ERROR.value, error_message)
 
 
-def cost_logging(file_name: str, data: dict) -> None:
+def write_device_information(file_name: str, data: dict) -> None:
     """
 
     :param file_name:
@@ -123,11 +123,13 @@ def cost_logging(file_name: str, data: dict) -> None:
         ) as file:
             file.write(
                 "|               Period in UTC               |"
-                " consumption in KWh |         Costs          |  Error rate in %  |\n"
+                " consumption in KWh |         Costs          |  Error rate in %  |"
+                " Power on count |\n"
             )
             file.write(
                 "|-------------------------------------------|"
-                "--------------------|------------------------|-------------------|\n"
+                "--------------------|------------------------|-------------------|"
+                "----------------|\n"
             )
 
     checked_total_cost = round(data["total_cost"], 2)
@@ -144,7 +146,7 @@ def cost_logging(file_name: str, data: dict) -> None:
         file.write(
             f"| {data['start_date']} - {data['end_date']} |{data['sum_of_energy']:>19} |"
             f"{checked_total_cost:>10} ({checked_cost_kwh:>4}€/KWh) |{checked_error_rate_one:>8} |"
-            f"{checked_error_rate_two:>8} |\n"
+            f"{checked_error_rate_two:>8} | {data['power_on']:>14} |\n"
         )
 
 

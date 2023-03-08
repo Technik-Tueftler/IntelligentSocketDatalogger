@@ -83,10 +83,11 @@ def main() -> None:
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_device_data, device_settings
                 )
-            cc.check_request_times()
             cost_calc_requested = cc.check_calc_requested(settings)
             if cost_calc_requested["start_schedule_task"] is True:
-                schedule.every().day.at(cc.config_request_time["calc_request_time_daily"]).do(
+                schedule.every().day.at(
+                    cc.config_request_time["calc_request_time_daily"]
+                ).do(
                     cc.calculation_handler,
                     settings | {"device_name": device_name},
                     cost_calc_requested,

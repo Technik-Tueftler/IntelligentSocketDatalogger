@@ -74,7 +74,7 @@ def setup(plugins) -> None:
                     + data["emeters"][1]["power"]
                     + data["emeters"][2]["power"]
                 )
-                total_energy_wh = (total_power * settings["update_time"] / 3600)
+                total_energy_wh = total_power * settings["update_time"] / 3600
                 device_data = [
                     {
                         "measurement": "census",
