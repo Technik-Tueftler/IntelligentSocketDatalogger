@@ -10,6 +10,7 @@ from requests.exceptions import ConnectTimeout
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
+from constants import DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER, DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER
 from source import logging_helper as lh
 
 
@@ -162,6 +163,25 @@ def fetch_measurements(bind_params: dict) -> influxdb.resultset.ResultSet:
             f"WHERE device=$device AND time > $target_date AND time < $current_date"
         )
         return conn.query(query, bind_params=bind_params)
+
+
+def validation_power_on_parameter(settings: dict, calc_requested: dict) -> None:
+    """
+    Check with costs are requested and call the correct calculations.
+    :param settings: device parameters
+    :param calc_requested: structure which calculations are requested
+    :return: None
+    """
+    if not any(calc_requested["power_on_counter"]):
+        return
+    if "on_threshold" not in settings["power_on_counter"]:
+        settings["power_on_counter"] |= {"on_threshold": DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER}
+    if not isinstance(settings["power_on_counter"]["on_threshold"], int):
+        settings["power_on_counter"] |= {"on_threshold": DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER}
+    if "off_threshold" not in settings["power_on_counter"]:
+        settings["power_on_counter"] |= {"off_threshold": DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER}
+    if not isinstance(settings["power_on_counter"]["off_threshold"], int):
+        settings["power_on_counter"] |= {"off_threshold": DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER}
 
 
 login_information = DataApp()

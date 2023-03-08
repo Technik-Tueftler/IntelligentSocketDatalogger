@@ -108,7 +108,7 @@ def cost_calc(
     settings: dict,
     data: dict,
     current_timestamp: datetime,
-    time_difference: relativedelta,
+    time_difference: relativedelta
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -162,6 +162,34 @@ def cost_calc(
         / (len(success_measurements) + len(failed_measurements))
     )
     data["error_rate_two"] = (max_values - len(success_measurements)) * 100 / max_values
+
+
+def power_on_calc(
+    settings: dict,
+    data: dict,
+    current_timestamp: datetime,
+    time_difference: relativedelta
+) -> None:
+    """
+    Calculate the monthly cost for a specific device.
+    :param settings: device parameters
+    :param data: data structure for writing in file
+    :param current_timestamp: Now date and time from request
+    :param time_difference: needed time difference for calculation
+    :return: None
+    """
+    start_date = current_timestamp - time_difference
+    start_date_format = start_date.strftime("%Y-%m-%d %H:%M:%S")
+    end_date = current_timestamp
+    end_date_format = end_date.strftime("%Y-%m-%d %H:%M:%S")
+
+    result = sf.fetch_measurements(
+        {
+            "device": settings["device_name"],
+            "target_date": start_date_format,
+            "current_date": end_date_format,
+        }
+    )
 
 
 def last_day_of_month(date) -> datetime:
@@ -299,7 +327,8 @@ def calculation_handler(
     if calc_requested["cost_calc"][0]:
         cost_calc(settings, data, current_timestamp, relativedelta(days=1))
     if calc_requested["power_on_counter"][0]:
-        ...
+        power_on_calc(settings, data, current_timestamp, relativedelta(days=1))
+
     sf.write_device_information(settings["device_name"] + "_day", data)
 
     data = {key: None for key in data}
