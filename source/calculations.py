@@ -108,7 +108,7 @@ def cost_calc(
     settings: dict,
     data: dict,
     current_timestamp: datetime,
-    time_difference: relativedelta
+    time_difference: relativedelta,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -168,7 +168,7 @@ def power_on_calc(
     settings: dict,
     data: dict,
     current_timestamp: datetime,
-    time_difference: relativedelta
+    time_difference: relativedelta,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -190,6 +190,18 @@ def power_on_calc(
             "current_date": end_date_format,
         }
     )
+    values = [element["power"] for element in result.get_points()]
+    counter = 0
+    high_threshold = settings["power_on_counter"]["on_threshold"]
+    low_threshold = settings["power_on_counter"]["off_threshold"]
+    high_threshold_passed = False
+    for value in values:
+        if (value >= high_threshold) and not high_threshold_passed:
+            high_threshold_passed = True
+        elif (value < low_threshold) and high_threshold_passed:
+            counter += 1
+            high_threshold_passed = False
+    data["power_on"] = counter
 
 
 def last_day_of_month(date) -> datetime:
@@ -265,6 +277,15 @@ def check_calc_requested(settings: dict) -> dict:
             start_schedule_task["cost_calc"][index] = True
             start_schedule_task["start_schedule_task"] |= True
 
+    if "power_on_counter" not in settings:
+        return start_schedule_task
+    power_on_counter_setting = settings["power_on_counter"]
+
+    for index, item in enumerate(["daily", "monthly", "yearly"]):
+        if power_on_counter_setting.get(item, False):
+            start_schedule_task["power_on_counter"][index] = True
+            start_schedule_task["start_schedule_task"] |= True
+
     return start_schedule_task
 
 
@@ -314,14 +335,14 @@ def calculation_handler(
     :return: None
     """
     data = {
-        "start_date": None,
-        "end_date": None,
-        "sum_of_energy": None,
-        "total_cost": None,
-        "cost_kwh": None,
-        "error_rate_one": None,
-        "error_rate_two": None,
-        "power_on": None,
+        "start_date": "Not req",
+        "end_date": "Not req",
+        "sum_of_energy": "Not req",
+        "total_cost": "Not req",
+        "cost_kwh": "Not req",
+        "error_rate_one": "Not req",
+        "error_rate_two": "Not req",
+        "power_on": "Not req",
     }
     current_timestamp = datetime.utcnow()
     if calc_requested["cost_calc"][0]:
@@ -329,24 +350,26 @@ def calculation_handler(
     if calc_requested["power_on_counter"][0]:
         power_on_calc(settings, data, current_timestamp, relativedelta(days=1))
 
-    sf.write_device_information(settings["device_name"] + "_day", data)
+    if calc_requested["cost_calc"][0] or calc_requested["power_on_counter"][0]:
+        sf.write_device_information(settings["device_name"] + "_day", data)
 
-    data = {key: None for key in data}
-    if calc_requested["cost_calc"][1]:
+    if calc_requested["cost_calc"][1] or calc_requested["power_on_counter"][1]:
+        data = {key: "Not req" for key in data}
         requested_day = int(config_request_time["calc_request_time_monthly"])
         if check_matched_day(current_timestamp, requested_day):
-            cost_calc(
-                settings,
-                data,
-                current_timestamp,
-                relativedelta(months=1),
-            )
-    if calc_requested["power_on_counter"][1]:
-        ...
-    sf.write_device_information(settings["device_name"] + "_month", data)
+            if calc_requested["cost_calc"][1]:
+                cost_calc(
+                    settings,
+                    data,
+                    current_timestamp,
+                    relativedelta(months=1),
+                )
+            if calc_requested["power_on_counter"][1]:
+                ...
+        sf.write_device_information(settings["device_name"] + "_month", data)
 
-    data = {key: None for key in data}
-    if calc_requested["cost_calc"][2]:
+    if calc_requested["cost_calc"][2] or calc_requested["power_on_counter"][2]:
+        data = {key: "Not req" for key in data}
         requested_day, requested_month = config_request_time[
             "calc_request_time_yearly"
         ].split(".")
@@ -355,11 +378,11 @@ def calculation_handler(
             int(requested_day),
             int(requested_month),
         ):
-            cost_calc(settings, data, current_timestamp, relativedelta(years=1))
-
-    if calc_requested["power_on_counter"][2]:
-        ...
-    sf.write_device_information(settings["device_name"] + "_year", data)
+            if calc_requested["cost_calc"][2]:
+                cost_calc(settings, data, current_timestamp, relativedelta(years=1))
+            if calc_requested["power_on_counter"][2]:
+                ...
+        sf.write_device_information(settings["device_name"] + "_year", data)
 
 
 def main() -> None:

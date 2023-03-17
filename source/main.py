@@ -85,7 +85,9 @@ def main() -> None:
                 )
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
-                support_functions.validation_power_on_parameter(settings, calc_requested)
+                support_functions.validation_power_on_parameter(
+                    settings, calc_requested
+                )
                 schedule.every().day.at(
                     cc.config_request_time["calc_request_time_daily"]
                 ).do(

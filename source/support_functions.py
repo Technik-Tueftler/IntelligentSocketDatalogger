@@ -10,7 +10,10 @@ from requests.exceptions import ConnectTimeout
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
-from constants import DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER, DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER
+from constants import (
+    DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER,
+    DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER,
+)
 from source import logging_helper as lh
 
 
@@ -117,7 +120,8 @@ def write_device_information(file_name: str, data: dict) -> None:
     :param data: information for logging
     :return:
     """
-
+    print(f"Fehler beim {file_name}")
+    print(f"mit den Daten {data}")
     if not os.path.exists(os.path.join("..", "files", file_name + ".txt")):
         with open(
             os.path.join("..", "files", file_name + ".txt"), "a", encoding="utf-8"
@@ -133,20 +137,31 @@ def write_device_information(file_name: str, data: dict) -> None:
                 "----------------|\n"
             )
 
-    checked_total_cost = round(data["total_cost"], 2)
-    if data["cost_kwh"] >= 10:
-        checked_cost_kwh = "9.99+"
-    else:
-        checked_cost_kwh = round(data["cost_kwh"], 3)
-    checked_error_rate_one = min(100.0, round(data["error_rate_one"], 1))
-    checked_error_rate_two = min(100.0, round(data["error_rate_two"], 1))
+    date = f"{data['start_date']} - {data['end_date']}"
 
+    if isinstance(data["total_cost"], float):
+        checked_total_cost = round(data["total_cost"], 2)
+        if data["cost_kwh"] >= 10:
+            checked_cost_kwh = "9.99+"
+        else:
+            checked_cost_kwh = round(data["cost_kwh"], 3)
+    else:
+        checked_total_cost = data["total_cost"]
+        checked_cost_kwh = "N.A."
+    if (isinstance(data["error_rate_one"], float)) and (
+        isinstance(data["error_rate_two"], float)
+    ):
+        checked_error_rate_one = min(100.0, round(data["error_rate_one"], 1))
+        checked_error_rate_two = min(100.0, round(data["error_rate_two"], 1))
+    else:
+        checked_error_rate_one = data["error_rate_one"]
+        checked_error_rate_two = data["error_rate_two"]
     with open(
         os.path.join("..", "files", file_name + ".txt"), "a", encoding="utf-8"
     ) as file:
         file.write(
-            f"| {data['start_date']} - {data['end_date']} |{data['sum_of_energy']:>19} |"
-            f"{checked_total_cost:>10} ({checked_cost_kwh:>4}€/KWh) |{checked_error_rate_one:>8} |"
+            f"| {date:>41} | {data['sum_of_energy']:>18} |"
+            f"{checked_total_cost:>10} ({checked_cost_kwh:>5}€/KWh) |{checked_error_rate_one:>8} |"
             f"{checked_error_rate_two:>8} | {data['power_on']:>14} |\n"
         )
 
@@ -175,13 +190,21 @@ def validation_power_on_parameter(settings: dict, calc_requested: dict) -> None:
     if not any(calc_requested["power_on_counter"]):
         return
     if "on_threshold" not in settings["power_on_counter"]:
-        settings["power_on_counter"] |= {"on_threshold": DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER}
+        settings["power_on_counter"] |= {
+            "on_threshold": DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER
+        }
     if not isinstance(settings["power_on_counter"]["on_threshold"], int):
-        settings["power_on_counter"] |= {"on_threshold": DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER}
+        settings["power_on_counter"] |= {
+            "on_threshold": DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER
+        }
     if "off_threshold" not in settings["power_on_counter"]:
-        settings["power_on_counter"] |= {"off_threshold": DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER}
+        settings["power_on_counter"] |= {
+            "off_threshold": DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER
+        }
     if not isinstance(settings["power_on_counter"]["off_threshold"], int):
-        settings["power_on_counter"] |= {"off_threshold": DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER}
+        settings["power_on_counter"] |= {
+            "off_threshold": DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER
+        }
 
 
 login_information = DataApp()
