@@ -10,7 +10,7 @@ from requests.exceptions import ConnectTimeout
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
-from constants import (
+from source.constants import (
     DEFAULT_THRESHOLD_ON_POWER_ON_COUNTER,
     DEFAULT_THRESHOLD_OFF_POWER_ON_COUNTER,
 )

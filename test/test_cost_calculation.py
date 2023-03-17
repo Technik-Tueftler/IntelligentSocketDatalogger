@@ -2,15 +2,17 @@
 Tests for cost_calculation.py
 """
 from datetime import datetime
+from unittest.mock import Mock, patch
+from dateutil.relativedelta import relativedelta
 
 import pytest
-
 from source.calculations import (
     last_day_of_month,
     check_month_parameter,
     check_day_parameter,
     check_matched_day,
     check_matched_day_and_month,
+    power_on_calc,
 )
 
 
@@ -110,3 +112,37 @@ def test_check_matched_day_and_month(parameter_1, parameter_2, parameter_3, expe
     """
     result = check_matched_day_and_month(parameter_1, parameter_2, parameter_3)
     assert result == expected
+
+
+def test_power_on_calc():
+    """
+    Pure test for function power_on_calc()
+    """
+    settings = {
+        "device_name": "my_device",
+        "power_on_counter": {"on_threshold": 100, "off_threshold": 50},
+    }
+    data = {}
+    current_timestamp = datetime(2023, 3, 17, 10, 0, 0)
+    time_difference = relativedelta(months=1)
+    mock_fetch_measurements = Mock(
+        return_value=Mock(
+            get_points=Mock(
+                return_value=[
+                    {"power": 70},
+                    {"power": 100},
+                    {"power": 50},
+                    {"power": 49},
+                    {"power": 99},
+                    {"power": 100},
+                    {"power": 50},
+                    {"power": 10},
+                ]
+            )
+        )
+    )
+
+    with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
+        power_on_calc(settings, data, current_timestamp, time_difference)
+
+    assert data["power_on"] == 2

@@ -365,7 +365,9 @@ def calculation_handler(
                     relativedelta(months=1),
                 )
             if calc_requested["power_on_counter"][1]:
-                ...
+                power_on_calc(
+                    settings, data, current_timestamp, relativedelta(months=1)
+                )
         sf.write_device_information(settings["device_name"] + "_month", data)
 
     if calc_requested["cost_calc"][2] or calc_requested["power_on_counter"][2]:
@@ -381,7 +383,7 @@ def calculation_handler(
             if calc_requested["cost_calc"][2]:
                 cost_calc(settings, data, current_timestamp, relativedelta(years=1))
             if calc_requested["power_on_counter"][2]:
-                ...
+                power_on_calc(settings, data, current_timestamp, relativedelta(years=1))
         sf.write_device_information(settings["device_name"] + "_year", data)
 
 
