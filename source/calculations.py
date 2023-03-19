@@ -45,12 +45,13 @@ def check_cost_calc_request_time() -> None:
             if "general" not in data:
                 return
             for key in config_request_time:
-                requested_start_time = data["general"][key]
-                if (
-                    re.search(config_request_time_pattern[key], requested_start_time)
-                    is not None
-                ):
-                    config_request_time[key] = requested_start_time
+                if key in data["general"]:
+                    requested_start_time = data["general"][key]
+                    if (
+                        re.search(config_request_time_pattern[key], requested_start_time)
+                        is not None
+                    ):
+                        config_request_time[key] = requested_start_time
 
     except FileNotFoundError as err:
         error_message = (

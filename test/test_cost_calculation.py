@@ -1,8 +1,10 @@
 """
 Tests for cost_calculation.py
 """
+import json
 from datetime import datetime
-from unittest.mock import Mock, patch
+import unittest
+from unittest.mock import Mock, patch, mock_open
 from dateutil.relativedelta import relativedelta
 
 import pytest
@@ -13,6 +15,8 @@ from source.calculations import (
     check_matched_day,
     check_matched_day_and_month,
     power_on_calc,
+    check_cost_calc_request_time,
+    config_request_time
 )
 
 
@@ -146,3 +150,54 @@ def test_power_on_calc():
         power_on_calc(settings, data, current_timestamp, time_difference)
 
     assert data["power_on"] == 2
+
+
+class TestCheckCostCalcRequestTime(unittest.TestCase):
+    """
+    Unit test for function check_cost_calc_request_time()
+    """
+    def test_check_cost_calc_request_time(self):
+        """
+        Check if correct config file is open and if the general exist with correct data.
+        """
+        mocked_config = {
+            "general": {
+                "calc_request_time_daily": "00:00",
+                "calc_request_time_monthly": "01",
+                "calc_request_time_yearly": "01.01",
+            }
+        }
+        with patch('builtins.open', mock_open(read_data=json.dumps(mocked_config))):
+            check_cost_calc_request_time()
+        self.assertEqual(config_request_time['calc_request_time_daily'], '00:00')
+        self.assertEqual(config_request_time['calc_request_time_monthly'], '01')
+        self.assertEqual(config_request_time['calc_request_time_yearly'], '01.01')
+
+    def test_check_cost_calc_request_time_wrong_config(self):
+        """
+        Check incorrect daily time or if config is not available.
+        """
+        mocked_config = {
+            "general": {
+                "calc_request_time_daily": "00:71",
+                "calc_request_time_yearly": "01.01",
+            }
+        }
+        with patch('builtins.open', mock_open(read_data=json.dumps(mocked_config))):
+            check_cost_calc_request_time()
+        self.assertEqual(config_request_time['calc_request_time_daily'], '00:00')
+        self.assertEqual(config_request_time['calc_request_time_monthly'], '01')
+        self.assertEqual(config_request_time['calc_request_time_yearly'], '01.01')
+
+    def test_check_cost_calc_request_time_no_general(self):
+        """
+        Check if function act correct if setting for general is not available.a
+        """
+        mocked_config = {
+            "not_general": {
+                "start_time": "2023-03-17 10:00:00"
+            }
+        }
+        with patch('builtins.open', mock_open(read_data=json.dumps(mocked_config))):
+            check_cost_calc_request_time()
+        self.assertIsNone(config_request_time.get('start_time'))
