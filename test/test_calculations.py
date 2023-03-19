@@ -16,8 +16,10 @@ from source.calculations import (
     check_matched_day_and_month,
     power_on_calc,
     check_cost_calc_request_time,
-    config_request_time
+    config_request_time,
+    check_cost_config
 )
+from source.constants import CONFIGURATION_FILE_PATH
 
 
 @pytest.mark.parametrize(
@@ -201,3 +203,32 @@ class TestCheckCostCalcRequestTime(unittest.TestCase):
         with patch('builtins.open', mock_open(read_data=json.dumps(mocked_config))):
             check_cost_calc_request_time()
         self.assertIsNone(config_request_time.get('start_time'))
+
+
+class TestCheckCostConfig(unittest.TestCase):
+    """
+    Unit test for function check_cost_config()
+    """
+    def test_check_cost_config(self):
+        """
+        Test if key value of price have the correct format and type. Also test if
+        value is correct rounded.
+        """
+        mock_file_contents = '{"general": {"price_kwh": "0,1234"}}'
+        mock = mock_open(read_data=mock_file_contents)
+
+        with patch('builtins.open', mock):
+            result = check_cost_config()
+
+            mock.assert_called_once_with(CONFIGURATION_FILE_PATH, encoding="utf-8")
+            self.assertEqual(result, 0.123)
+
+    def test_check_cost_config_default(self):
+        """
+        Test default value in case of no configuration
+        """
+        mock_file_contents = '{"general": {"wrong_config": "hello"}}'
+
+        with patch('builtins.open', mock_open(read_data=mock_file_contents)):
+            result = check_cost_config()
+            self.assertEqual(result, 0.3)

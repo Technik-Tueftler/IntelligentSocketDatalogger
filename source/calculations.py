@@ -38,6 +38,8 @@ def check_cost_calc_request_time() -> None:
     Check if a start time is given for cost calculation and have the right format. If something is
     wrong, a default time is returned.
     :return: Start time in string format
+
+    Test: Function -> available
     """
     try:
         with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
@@ -71,6 +73,8 @@ def check_cost_config() -> float:
     Check if a cost config for KWh is given for cost calculation and have the right format.
     If something is wrong, a default time is returned and a log entry is written.
     :return: price per KWh as a float
+
+    Test: Function -> available
     """
     default_price = 0.3
     try:
@@ -81,6 +85,8 @@ def check_cost_config() -> float:
                 if not isinstance(requested_kwh_price, float):
                     requested_kwh_price = requested_kwh_price.replace(",", ".")
                 checked_requested_kwh_price = round(float(requested_kwh_price), 3)
+            else:
+                return default_price
         return checked_requested_kwh_price
 
     except FileNotFoundError as err:
