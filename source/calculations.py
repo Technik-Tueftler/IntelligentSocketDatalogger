@@ -44,7 +44,7 @@ def check_cost_calc_request_time() -> None:
     wrong, a default time is returned.
     :return: Start time in string format
 
-    Test: Function -> available
+    Test available
     """
     try:
         with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
@@ -69,9 +69,9 @@ def check_cost_calc_request_time() -> None:
             f"default values are used. Error occurred during start the app with "
             f"error message: {err}."
         )
-        if not configuration_failed_message_send[FileNotFoundError]:
+        if not configuration_failed_message_send["FileNotFoundError"]:
             lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
-            configuration_failed_message_send[FileNotFoundError] = True
+            configuration_failed_message_send["FileNotFoundError"] = True
         return
 
 
@@ -81,7 +81,7 @@ def check_cost_config() -> float:
     If something is wrong, a default time is returned and a log entry is written.
     :return: price per KWh as a float
 
-    Test: Function -> available
+    Test available
     """
     default_price = 0.3
     try:
@@ -209,6 +209,8 @@ def power_on_calc(
     :param current_timestamp: Now date and time from request
     :param time_difference: needed time difference for calculation
     :return: None
+
+    Test available
     """
     start_date = current_timestamp - time_difference
     start_date_format = start_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -241,6 +243,8 @@ def last_day_of_month(date) -> datetime:
     Functions calculate the last day of the provided date.
     :param date: Date from which the last day is to be returned.
     :return: Returns a date with changed day which is the last of the month.
+
+    Test available
     """
     if date.month == 12:
         return date.replace(day=31)
@@ -252,6 +256,8 @@ def check_month_parameter(month: str) -> int:
     Check the month parameter and set default value if it is not plausible.
     :param month: Parameter for month calculation as String
     :return: Returns the plausibility value as Integer
+
+    Test available
     """
     checked_month = int(month)
     if checked_month < 1 or checked_month > 12:
@@ -266,6 +272,8 @@ def check_day_parameter(day: str) -> int:
     for February.
     :param day: Parameter for day calculation as String
     :return: Returns the plausibility value as Integer
+
+    Test available
     """
     checked_day = int(day)
     if checked_day < 1 or checked_day > 31:
