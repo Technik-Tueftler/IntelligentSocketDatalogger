@@ -2,11 +2,22 @@
   "Waschmaschine":
   {
     "type": "shelly:plug-s",
-    "ip": "192.168.178.200",
+    "ip": "192.168.178.209",
     "update_time": 10,
-    "cost_calc_day": true,
-    "cost_calc_month": "01",
-    "cost_calc_year": "01.01"
+    "cost_calculation":
+    {
+      "daily": true,
+      "monthly": true,
+      "yearly": true
+    },
+    "power_on_counter":
+    {
+      "daily": true,
+      "monthly": true,
+      "yearly": true,
+      "on_threshold": 2,
+      "off_threshold": 1
+    }
   },
   "Waermepumpe":
   {

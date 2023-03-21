@@ -2,7 +2,9 @@
   "general":
   {
     "log_level": "info",
-    "cost_calc_request_time": "00:00",
+    "calc_request_time_daily": "00:00",
+    "calc_request_time_monthly": "01",
+    "calc_request_time_yearly": "01.01",
     "price_kwh": 0.296
   }
 }

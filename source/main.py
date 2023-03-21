@@ -9,12 +9,13 @@ import json
 import time
 from datetime import datetime
 
+import requests
 import schedule
 from influxdb.exceptions import InfluxDBClientError
 
 from source.supported_devices import plugins
 from source import support_functions
-from source import cost_calculation as cc
+from source import calculations as cc
 from source import logging_helper as lh
 from source.constants import DEVICES_FILE_PATH
 
@@ -56,7 +57,7 @@ def write_data(device_data: list):
         write_watch_hen.failure_processing(
             type(err).__name__, err, "- data could not be saved to database."
         )
-    except ConnectionError as err:
+    except requests.exceptions.ConnectionError as err:
         write_watch_hen.failure_processing(
             type(err).__name__, err, "- no connection to database."
         )
@@ -72,7 +73,7 @@ def main() -> None:
         keys = ["ip", "update_time", "type"]
         with open(DEVICES_FILE_PATH, encoding="utf-8") as file:
             data = json.load(file)
-        request_start_time = cc.check_cost_calc_request_time()
+        cc.check_cost_calc_request_time()
         for device_name, settings in data.items():
             if all(key in settings for key in keys):
                 device_settings = settings | {
@@ -82,13 +83,17 @@ def main() -> None:
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_device_data, device_settings
                 )
-            cost_calc_requested = cc.check_cost_calc_requested(settings)
-            if cost_calc_requested["start_schedule_task"] is True:
-                schedule.every().day.at(request_start_time).do(
-                    cc.cost_calc_handler,
-                    device_name,
-                    settings,
-                    cost_calc_requested,
+            calc_requested = cc.check_calc_requested(settings)
+            if calc_requested["start_schedule_task"] is True:
+                support_functions.validation_power_on_parameter(
+                    settings, calc_requested
+                )
+                schedule.every().day.at(
+                    cc.config_request_time["calc_request_time_daily"]
+                ).do(
+                    cc.calculation_handler,
+                    settings | {"device_name": device_name},
+                    calc_requested,
                 )
 
         while True:
