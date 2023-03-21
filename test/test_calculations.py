@@ -17,7 +17,7 @@ from source.calculations import (
     power_on_calc,
     check_cost_calc_request_time,
     config_request_time,
-    check_cost_config
+    check_cost_config,
 )
 from source.constants import CONFIGURATION_FILE_PATH
 
@@ -158,6 +158,7 @@ class TestCheckCostCalcRequestTime(unittest.TestCase):
     """
     Unit test for function check_cost_calc_request_time()
     """
+
     def test_check_cost_calc_request_time(self):
         """
         Check if correct config file is open and if the general exist with correct data.
@@ -169,11 +170,11 @@ class TestCheckCostCalcRequestTime(unittest.TestCase):
                 "calc_request_time_yearly": "01.01",
             }
         }
-        with patch('builtins.open', mock_open(read_data=json.dumps(mocked_config))):
+        with patch("builtins.open", mock_open(read_data=json.dumps(mocked_config))):
             check_cost_calc_request_time()
-        self.assertEqual(config_request_time['calc_request_time_daily'], '00:00')
-        self.assertEqual(config_request_time['calc_request_time_monthly'], '01')
-        self.assertEqual(config_request_time['calc_request_time_yearly'], '01.01')
+        self.assertEqual(config_request_time["calc_request_time_daily"], "00:00")
+        self.assertEqual(config_request_time["calc_request_time_monthly"], "01")
+        self.assertEqual(config_request_time["calc_request_time_yearly"], "01.01")
 
     def test_check_cost_calc_request_time_wrong_config(self):
         """
@@ -185,30 +186,27 @@ class TestCheckCostCalcRequestTime(unittest.TestCase):
                 "calc_request_time_yearly": "01.01",
             }
         }
-        with patch('builtins.open', mock_open(read_data=json.dumps(mocked_config))):
+        with patch("builtins.open", mock_open(read_data=json.dumps(mocked_config))):
             check_cost_calc_request_time()
-        self.assertEqual(config_request_time['calc_request_time_daily'], '00:00')
-        self.assertEqual(config_request_time['calc_request_time_monthly'], '01')
-        self.assertEqual(config_request_time['calc_request_time_yearly'], '01.01')
+        self.assertEqual(config_request_time["calc_request_time_daily"], "00:00")
+        self.assertEqual(config_request_time["calc_request_time_monthly"], "01")
+        self.assertEqual(config_request_time["calc_request_time_yearly"], "01.01")
 
     def test_check_cost_calc_request_time_no_general(self):
         """
         Check if function act correct if setting for general is not available.a
         """
-        mocked_config = {
-            "not_general": {
-                "start_time": "2023-03-17 10:00:00"
-            }
-        }
-        with patch('builtins.open', mock_open(read_data=json.dumps(mocked_config))):
+        mocked_config = {"not_general": {"start_time": "2023-03-17 10:00:00"}}
+        with patch("builtins.open", mock_open(read_data=json.dumps(mocked_config))):
             check_cost_calc_request_time()
-        self.assertIsNone(config_request_time.get('start_time'))
+        self.assertIsNone(config_request_time.get("start_time"))
 
 
 class TestCheckCostConfig(unittest.TestCase):
     """
     Unit test for function check_cost_config()
     """
+
     def test_check_cost_config(self):
         """
         Test if key value of price have the correct format and type. Also test if
@@ -217,7 +215,7 @@ class TestCheckCostConfig(unittest.TestCase):
         mock_file_contents = '{"general": {"price_kwh": "0,1234"}}'
         mock = mock_open(read_data=mock_file_contents)
 
-        with patch('builtins.open', mock):
+        with patch("builtins.open", mock):
             result = check_cost_config()
 
             mock.assert_called_once_with(CONFIGURATION_FILE_PATH, encoding="utf-8")
@@ -229,6 +227,16 @@ class TestCheckCostConfig(unittest.TestCase):
         """
         mock_file_contents = '{"general": {"wrong_config": "hello"}}'
 
-        with patch('builtins.open', mock_open(read_data=mock_file_contents)):
+        with patch("builtins.open", mock_open(read_data=mock_file_contents)):
+            result = check_cost_config()
+            self.assertEqual(result, 0.3)
+
+    def test_check_cost_config_default_no_value(self):
+        """
+        Test default value in case of no configuration
+        """
+        mock_file_contents = '{"general": {"price_kwh": true}}'
+
+        with patch("builtins.open", mock_open(read_data=mock_file_contents)):
             result = check_cost_config()
             self.assertEqual(result, 0.3)

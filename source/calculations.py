@@ -20,7 +20,12 @@ from source import logging_helper as lh
 
 TIMESTAMP_FORMAT_INPUT = "%Y-%m-%dT%H:%M:%S.%fZ"
 TIMESTAMP_FORMAT_OUTPUT = "%Y-%m-%dT%H:%M:%S"
-configuration_failed_message_send = {"FileNotFoundError": False, "ValueError": False}
+configuration_failed_message_send = {
+    "FileNotFoundError": False,
+    "ValueError": False,
+    "KeyError": False,
+    "AttributeError": False,
+}
 config_request_time = {
     "calc_request_time_daily": "00:00",
     "calc_request_time_monthly": "01",
@@ -50,7 +55,9 @@ def check_cost_calc_request_time() -> None:
                 if key in data["general"]:
                     requested_start_time = data["general"][key]
                     if (
-                        re.search(config_request_time_pattern[key], requested_start_time)
+                        re.search(
+                            config_request_time_pattern[key], requested_start_time
+                        )
                         is not None
                     ):
                         config_request_time[key] = requested_start_time
@@ -96,18 +103,36 @@ def check_cost_config() -> float:
             f"default values are used. Error occurred during start the app with "
             f"error message: {err}."
         )
-        if not configuration_failed_message_send[FileNotFoundError]:
+        if not configuration_failed_message_send["FileNotFoundError"]:
             lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
-            configuration_failed_message_send[FileNotFoundError] = True
+            configuration_failed_message_send["FileNotFoundError"] = True
         return default_price
     except ValueError as err:
         error_message = (
             f"The setting for the price is not a number. A default value of 0.30€ "
             f"was assumed. Error message: {err}"
         )
-        if not configuration_failed_message_send[ValueError]:
+        if not configuration_failed_message_send["ValueError"]:
             lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
-            configuration_failed_message_send[ValueError] = True
+            configuration_failed_message_send["ValueError"] = True
+        return default_price
+    except KeyError as err:
+        error_message = (
+            f"The setting for the price is not a number. A default value of 0.30€ "
+            f"was assumed. Error message: {err}"
+        )
+        if not configuration_failed_message_send["KeyError"]:
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
+            configuration_failed_message_send["KeyError"] = True
+        return default_price
+    except AttributeError as err:
+        error_message = (
+            f"The setting for the price is not a number. A default value of 0.30€ "
+            f"was assumed. Error message: {err}"
+        )
+        if not configuration_failed_message_send["AttributeError"]:
+            lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
+            configuration_failed_message_send["AttributeError"] = True
         return default_price
 
 
@@ -399,6 +424,7 @@ def main() -> None:
     Scheduling function for regular call.
     :return: None
     """
+    print(check_cost_config())
 
 
 if __name__ == "__main__":
