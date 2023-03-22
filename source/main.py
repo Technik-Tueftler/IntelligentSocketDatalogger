@@ -17,6 +17,7 @@ from source.supported_devices import plugins
 from source import support_functions
 from source import calculations as cc
 from source import logging_helper as lh
+from source import telegram_handler as th
 from source.constants import DEVICES_FILE_PATH
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
@@ -112,5 +113,7 @@ if __name__ == "__main__":
     message = f"Start Program: {timestamp_now} UTC"
     lh.write_log(lh.LoggingLevel.INFO.value, message)
     support_functions.check_and_verify_db_connection()
+    th.check_and_verify_bot_connection()
+    th.send_message(message)
     if support_functions.login_information.verified is not False:
         main()
