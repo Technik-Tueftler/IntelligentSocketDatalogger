@@ -24,8 +24,19 @@
     "type": "shelly:3em",
     "ip": "192.168.178.220",
     "update_time": 10,
-    "cost_calc_day": true,
-    "cost_calc_month": "01",
-    "cost_calc_year": "01.01"
+    "cost_calculation":
+    {
+      "daily": true,
+      "monthly": false,
+      "yearly": false
+    },
+    "power_on_counter":
+    {
+      "daily": true,
+      "monthly": true,
+      "yearly": true,
+      "on_threshold": 50,
+      "off_threshold": 2
+    }
   }
 }

@@ -88,7 +88,10 @@ class InfluxDBConnection(InfluxDBClient):
 
 
 def check_and_verify_db_connection() -> None:
-    """Function controls the passed env variables and checks if they are valid."""
+    """
+    Function controls the passed env variables and checks if they are valid.
+    :return: None
+    """
     try:
         with InfluxDBConnection() as connection:
             connection.ping()
@@ -115,8 +118,8 @@ def check_and_verify_db_connection() -> None:
 
 def write_device_information(file_name: str, data: dict) -> None:
     """
-
-    :param file_name:
+    Write all the requested information to external file.
+    :param file_name: Filename under which it should be saved
     :param data: information for logging
     :return:
     """

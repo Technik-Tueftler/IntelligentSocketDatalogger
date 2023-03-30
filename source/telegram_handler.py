@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+All functions to operate the features for the telegram bot.
+"""
 import os
 import requests
 from source import logging_helper as lh
@@ -11,6 +14,11 @@ verified_bot_connection = {"verified": True, "token": False, "chat_id": False}
 
 
 def send_message(message: str) -> None:
+    """
+    Function send a message from bot to the chat.
+    :param message: Transmitted message which is to be written by the bot to the chat
+    :return: None
+    """
     if not verified_bot_connection["verified"]:
         return
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}"
@@ -18,6 +26,11 @@ def send_message(message: str) -> None:
 
 
 def check_and_verify_bot_connection() -> None:
+    """
+    Function controls the passed env variables and checks if a connection
+    to the chat can be established
+    :return:
+    """
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     token_check_response = requests.get(url).json()
     if token_check_response["ok"]:
@@ -36,7 +49,10 @@ def check_and_verify_bot_connection() -> None:
 
 
 def main() -> None:
-    pass
+    """
+    Scheduling function for regular call.
+    :return: None
+    """
 
 
 if __name__ == "__main__":
