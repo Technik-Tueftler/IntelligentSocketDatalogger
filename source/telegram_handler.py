@@ -10,7 +10,20 @@ from source import logging_helper as lh
 TOKEN = os.getenv("TB_TOKEN")
 CHAT_ID = os.getenv("TB_CHAT_ID")
 
-verified_bot_connection = {"verified": True, "token": False, "chat_id": False}
+verified_bot_connection = {"verified": True, "token": False, "chat_id": False, "last_received_message": 33}
+
+
+def poll_messages() -> None:
+    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+    results = requests.get(url).json()
+    messages = [result["message"]["text"] for result in results["result"] if result["message"]["message_id"] > verified_bot_connection["last_received_message"]]
+    messages_id = [result["message"]["message_id"] for result in results["result"] if result["message"]["message_id"] > verified_bot_connection["last_received_message"]]
+    for message in messages:
+        # leerzeichen am Ende abschneiden
+        if message.lower() == "!status":
+            print("Ja ich bin am Leben, danke der Nachfrage")
+    if len(messages_id) <= 0: return
+    verified_bot_connection["last_received_message"] = max(messages_id)
 
 
 def send_message(message: str) -> None:
@@ -53,7 +66,7 @@ def main() -> None:
     Scheduling function for regular call.
     :return: None
     """
-
+    poll_messages()
 
 if __name__ == "__main__":
     main()
