@@ -16,6 +16,10 @@ IntelligentSocketDatalogger ist eine App, welche in einzel einstellbaren Zeitint
 - Shelly Plug S (Typbezeichnung: shelly:plug-s)  
 - Shelly 3EM (Typbezeichnung: shelly:3em)  
 
+## Auflistung Zusatzfunktionen
+`Kostenzusammenfassung:` Gibt die Gesamtarbeit in KWh für den geforderten Zeitraum aus und berechnet die Gesamtkosten.  
+`Einschaltzähler:` Zählt wie häufig sich ein Gerät, für den geforderten Zeitraum, einschaltet.  
+
 ## Installation und Ausführung
 1. Lokal läuft das Programm durch Ausführen der `main.py`. Aktuell muss noch darauf geachtet werden, dass die Umgebungsvariablen in die IDE oder in die Umgebung geladen werden. Hierzu einfach das Repository kopieren und die main.py starten. Getestet und entwickelt wurde das Programm unter Python 3.10.
 2. Über einen Docker Container. Siehe Dokumentation: <https://hub.docker.com/r/techniktueftler/intelligent_socket_datalogger>
@@ -46,7 +50,7 @@ IntelligentSocketDatalogger ist eine App, welche in einzel einstellbaren Zeitint
 | is_valid_a _b _c     | Boolean | Zurückgegebene Werte sind ok für die Module A, B or C vom Shelly 3EM |     -      |
 | power_a _b _c        |  Float  | Aktuelle Leistung im Modul A, B or C des Shelly 3EM                  |    Watt    |
 | power_factor_a _b _c |  Float  | Aktueller Leistungsfaktor im Modul A, B or C des Shelly 3EM          |    Watt    |
-| voltage_a _b _c      |  Float  | Aktuelle Spannung die auf dem Modul A, B or C anliegt im Shelly 3EM  |   lambda   |
+| voltage_a _b _c      |  Float  | Aktuelle Spannung die auf dem Modul A, B or C anliegt im Shelly 3EM  |    Volt    |
 
 
 ## Konfigurationsdateien
@@ -65,13 +69,17 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
   "general":
   {
     "log_level": "info",
-    "cost_calc_request_time": "00:00",
+    "calc_request_time_daily": "00:00",
+    "calc_request_time_monthly": "01",
+    "calc_request_time_yearly": "01.01",
     "price_kwh": 0.296
   }
 }
 ````
 `log_level:` Protokollierungslevel für das Projekt. Mögliche Einstellungen: *debug, info, warning, error, critical*  
-`cost_calc_request_time:` Gib die Uhrzeit an, zu dem die Kostenkalkulierung startet. Dieser Parameter gilt für alle Berechnungen. Die Standarduhrzeit ist 00:00 Uhr. 
+`calc_request_time_daily:` Gib die Uhrzeit an, zu dem die eingestellten Auswertungen täglich gestartet werden. Dieser Parameter gilt für alle Auswertungen. Die Standarduhrzeit ist 00:00 Uhr.  
+`calc_request_time_monthly:` Gibt den Tag im Monat an, an dem die eingestellten Auswertungen monatlich gestartet werden sollen. Die Standardeinstellung ist der erste eines Monats.  
+`calc_request_time_yearly:` Gibt den Tag und Monat im Jahr an, an dem die eingestellten Auswertungen jährlich gestartet werden soll. Die Standardeinstellung ist der 01.01.  
 `price_kwh:` Gibt den Preis pro Kilowattstunde an. Der Standardwert ist 0.30€.  
 
 ### devices.json
@@ -82,25 +90,41 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
     "type": "shelly:plug-s",
     "ip": "192.168.178.200",
     "update_time": 10,
-    "cost_calc_month": "01",
-    "cost_calc_year": "01.01"
-  },
-  "Herd":
-  {
-    "type": "shelly:3em",
-    "ip": "192.168.178.201",
-    "update_time": 30,
-    "cost_calc_day": true
+    "cost_calculation":
+    {
+      "daily": true,
+      "monthly": true,
+      "yearly": true
+    },
+    "power_on_counter":
+    {
+      "daily": false,
+      "monthly": true,
+      "yearly": false,
+      "on_threshold": 2,
+      "off_threshold": 1
+    }
   }
 }
 ````
 `Waschmaschine:` Gerätename, welcher aufgezeichnet wird.  
+`type:` Typ der Steckdose. Aktuell werden standardmäßig __shelly:plug-s__ und __shelly:3em__ unterstützt.  
 `ip:` IP-Adresse im verbundenen Netzwerk  
 `update_time:` Aktualisierungszeit in welchem Abstand neue Daten abgefragt werden sollen. Angabe ist in __Sekunden__.  
-`type:` Typ der Steckdose. Aktuell werden standardmäßig __shelly:plug-s__ und __shelly:3em__ unterstützt.
-`cost_calc_day:` Aktiviert das Feature, dass einmal am Tag die gesamten Kosten und die Arbeit des Gerätes für die letzten 24 Stunden abgelegt werden. Der Zeitpunkt wird in der __config.json__ mit dem Parameter __cost_calc_request_time__ festgelegt.  
-`cost_calc_month:` Aktiviert das Feature, dass einmal im Monat die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag im Monat.  
-`cost_calc_year:` Aktiviert das Feature, dass einmal im Jahr die gesamtkosten und die Arbeit des Gerätes berechnet werden. Eingestellt wird hier der Ausführungstag und Monat.  
+
+#### Kostenzusammenfassung (cost_calculation)
+Mit dieser Funktion kann man festlegen, ob man eine tägliche, monatliche und jährliche Zusammenfassung haben möchte. Die Optionen `daily`, `monthly` und `yearly` werden jeweils mit `true` für aktiv oder `false` für inaktiv belegt.  
+
+#### Einschaltzähler (power_on_counter)
+Mit dieser Funktion wird gezählt, wie häufig sich ein Gerät am Tag, im Monat und im Jahr einschaltet. Die Optionen `daily`, `monthly` und `yearly` werden jeweils mit `true` für aktiv oder `false` für inaktiv belegt.  
+`on_threshold:` Der Wert in Watt, welcher überschritten werden muss, damit ein **Einschalten** erfasst wird.  
+`off_threshold:` Der Wert in Watt, welcher unterschritten werden muss, damit ein **Ausschalten** erfasst wird.  
+```mermaid
+graph LR
+B((Aus))
+B-->|größer on_threshold|C((An))
+C-->|kleiner off_threshold|B
+```
 
 ### ISDL Config Editor
 Für ein einfaches erstellen der Konfigurationsdateien auf den eigenen Aufbau, gibt es unter [ISDL Config Editor](https://isdledit.jojojux.de/editor) eine grafische Benutzeroberfläche. Hier kann über ein Eingebefenster z.B. der Preis/kWh eingestellt und am Ende die fertig formatierte Konfigurationsdatei heruntergeladen werden. Auch können alle Steckdosen einzel hinzugefügt werden mit den nötigen Einstellungen. Das erleichtert das Einstellen und verhindert Formatierungsfehler.

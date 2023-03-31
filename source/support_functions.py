@@ -120,8 +120,6 @@ def write_device_information(file_name: str, data: dict) -> None:
     :param data: information for logging
     :return:
     """
-    print(f"Fehler beim {file_name}")
-    print(f"mit den Daten {data}")
     if not os.path.exists(os.path.join("..", "files", file_name + ".txt")):
         with open(
             os.path.join("..", "files", file_name + ".txt"), "a", encoding="utf-8"
