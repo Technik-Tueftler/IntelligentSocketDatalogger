@@ -240,6 +240,8 @@ def power_on_calc(  # pylint: disable=too-many-locals
             high_threshold_passed = False
         no_valid_data = False
     data["power_on"] = counter
+    data["start_date"] = start_date_format
+    data["end_date"] = end_date_format
     if no_valid_data:
         error_message = (
             f"For {settings['device_name']} no data available between "
