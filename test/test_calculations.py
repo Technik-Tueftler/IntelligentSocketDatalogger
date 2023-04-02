@@ -120,7 +120,7 @@ def test_check_matched_day_and_month(parameter_1, parameter_2, parameter_3, expe
     assert result == expected
 
 
-def test_power_on_calc():
+class PowerOnCalcTestCase(unittest.TestCase):
     """
     Pure test for function power_on_calc()
     """
@@ -131,27 +131,76 @@ def test_power_on_calc():
     data = {}
     current_timestamp = datetime(2023, 3, 17, 10, 0, 0)
     time_difference = relativedelta(months=1)
-    mock_fetch_measurements = Mock(
-        return_value=Mock(
-            get_points=Mock(
-                return_value=[
-                    {"power": 70},
-                    {"power": 100},
-                    {"power": 50},
-                    {"power": 49},
-                    {"power": 99},
-                    {"power": 100},
-                    {"power": 50},
-                    {"power": 10},
-                ]
+
+    def test_power_on_calc_valid_data(self):
+        """
+        All data are valid
+        """
+        mock_fetch_measurements = Mock(
+            return_value=Mock(
+                get_points=Mock(
+                    return_value=[
+                        {"power": 70},
+                        {"power": 100},
+                        {"power": 50},
+                        {"power": 49},
+                        {"power": 99},
+                        {"power": 100},
+                        {"power": 50},
+                        {"power": 10},
+                    ]
+                )
             )
         )
-    )
 
-    with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
-        power_on_calc(settings, data, current_timestamp, time_difference)
+        with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
+            power_on_calc(self.settings, self.data, self.current_timestamp, self.time_difference)
 
-    assert data["power_on"] == 2
+        self.assertEqual(self.data["power_on"], 2)
+
+    def test_power_on_calc_invalid_data(self):
+        """
+        Mixed data with invalid and valid information
+        """
+        mock_fetch_measurements = Mock(
+            return_value=Mock(
+                get_points=Mock(
+                    return_value=[
+                        {"power": None},
+                        {"power": 100},
+                        {"power": 50},
+                        {"power": 49},
+                        {"power": 99},
+                        {"power": None},
+                        {"power": 50},
+                        {"power": 10},
+                    ]
+                )
+            )
+        )
+
+        with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
+            power_on_calc(self.settings, self.data, self.current_timestamp, self.time_difference)
+
+        self.assertEqual(self.data["power_on"], 1)
+
+    def test_power_on_calc_no_data(self):
+        """
+        No data are available
+        """
+        mock_fetch_measurements = Mock(
+            return_value=Mock(
+                get_points=Mock(
+                    return_value=[
+                    ]
+                )
+            )
+        )
+
+        with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
+            power_on_calc(self.settings, self.data, self.current_timestamp, self.time_difference)
+
+        self.assertEqual(self.data["power_on"], 0)
 
 
 class TestCheckCostCalcRequestTime(unittest.TestCase):

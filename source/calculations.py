@@ -55,10 +55,10 @@ def check_cost_calc_request_time() -> None:
                 if key in data["general"]:
                     requested_start_time = data["general"][key]
                     if (
-                        re.search(
-                            config_request_time_pattern[key], requested_start_time
-                        )
-                        is not None
+                            re.search(
+                                config_request_time_pattern[key], requested_start_time
+                            )
+                            is not None
                     ):
                         config_request_time[key] = requested_start_time
 
@@ -137,10 +137,10 @@ def check_cost_config() -> float:
 
 
 def cost_calc(
-    settings: dict,
-    data: dict,
-    current_timestamp: datetime,
-    time_difference: relativedelta,
+        settings: dict,
+        data: dict,
+        current_timestamp: datetime,
+        time_difference: relativedelta,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -189,18 +189,18 @@ def cost_calc(
     data["total_cost"] = sum_of_energy_in_kwh * cost_kwh
     data["cost_kwh"] = cost_kwh
     data["error_rate_one"] = (
-        len(failed_measurements)
-        * 100
-        / (len(success_measurements) + len(failed_measurements))
+            len(failed_measurements)
+            * 100
+            / (len(success_measurements) + len(failed_measurements))
     )
     data["error_rate_two"] = (max_values - len(success_measurements)) * 100 / max_values
 
 
-def power_on_calc(
-    settings: dict,
-    data: dict,
-    current_timestamp: datetime,
-    time_difference: relativedelta,
+def power_on_calc(  # pylint: disable=too-many-locals
+        settings: dict,
+        data: dict,
+        current_timestamp: datetime,
+        time_difference: relativedelta,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -229,13 +229,21 @@ def power_on_calc(
     high_threshold = settings["power_on_counter"]["on_threshold"]
     low_threshold = settings["power_on_counter"]["off_threshold"]
     high_threshold_passed = False
+    no_valid_data = True
     for value in values:
+        if not isinstance(value, int):
+            continue
         if (value >= high_threshold) and not high_threshold_passed:
             high_threshold_passed = True
         elif (value < low_threshold) and high_threshold_passed:
             counter += 1
             high_threshold_passed = False
+        no_valid_data = False
     data["power_on"] = counter
+    if no_valid_data:
+        error_message = f"For {settings['device_name']} no data available between " \
+                        f"{start_date_format} - {end_date_format}"
+        lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
 
 
 def last_day_of_month(date) -> datetime:
@@ -348,7 +356,7 @@ def check_matched_day(current_date: datetime, target_day: int) -> bool:
 
 
 def check_matched_day_and_month(
-    current_date: datetime, target_day: int, target_month: int
+        current_date: datetime, target_day: int, target_month: int
 ) -> bool:
     """
     Checks if the current day and month matches the set date. In addition, if the set day is not
@@ -365,8 +373,8 @@ def check_matched_day_and_month(
 
 
 def calculation_handler(
-    settings: dict,
-    calc_requested: dict,
+        settings: dict,
+        calc_requested: dict,
 ) -> None:
     """
     Check with costs are requested and call the correct calculations.
@@ -416,9 +424,9 @@ def calculation_handler(
             "calc_request_time_yearly"
         ].split(".")
         if check_matched_day_and_month(
-            current_timestamp,
-            int(requested_day),
-            int(requested_month),
+                current_timestamp,
+                int(requested_day),
+                int(requested_month),
         ):
             if calc_requested["cost_calc"][2]:
                 cost_calc(settings, data, current_timestamp, relativedelta(years=1))
