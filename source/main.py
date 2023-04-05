@@ -8,6 +8,7 @@ import sys
 import json
 import time
 from datetime import datetime
+from queue import Queue
 
 import requests
 import schedule
@@ -17,11 +18,12 @@ from source.supported_devices import plugins
 from source import support_functions
 from source import calculations as cc
 from source import logging_helper as lh
-#from source import telegram_handler as th
+from source import telegram_handler as th
 from source.constants import DEVICES_FILE_PATH
-from source.test2 import start_bot, custom_command2
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
+main_to_th = Queue()
+th_to_main = Queue()
 
 
 def fetch_device_data(settings: dict) -> None:
@@ -97,6 +99,10 @@ def main() -> None:
                     settings | {"device_name": device_name},
                     calc_requested,
                 )
+                # Start Telegram-Bot and send message
+                th.check_and_verify_bot_connection()
+                if th.verified_bot_connection["verified"]:
+                    th.send_message(message)
 
         while True:
             schedule.run_pending()
@@ -114,10 +120,5 @@ if __name__ == "__main__":
     message = f"Start Program: {timestamp_now} UTC"
     lh.write_log(lh.LoggingLevel.INFO.value, message)
     support_functions.check_and_verify_db_connection()
-    #th.check_and_verify_bot_connection()
-    #th.send_message(message)
-    #schedule.every(10).seconds.do(th.poll_messages)
-    start_bot()
-    custom_command2()
     if support_functions.login_information.verified is not False:
         main()
