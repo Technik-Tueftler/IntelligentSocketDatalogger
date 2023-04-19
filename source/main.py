@@ -8,7 +8,6 @@ import sys
 import json
 import time
 from datetime import datetime
-from queue import Queue
 
 import requests
 import schedule
@@ -19,11 +18,10 @@ from source import support_functions
 from source import calculations as cc
 from source import logging_helper as lh
 from source import telegram_handler as th
+from source import communication as com
 from source.constants import DEVICES_FILE_PATH
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
-main_to_th = Queue()
-th_to_main = Queue()
 
 
 def fetch_device_data(settings: dict) -> None:
@@ -67,6 +65,13 @@ def write_data(device_data: list):
         )
 
 
+def handle_communication() -> None:
+    while not com.bot_to_main.empty():
+        req = com.bot_to_main.get()
+        if req.command == "status":
+            com.main_to_bot.put(com.Response("App is running", "status"))
+
+
 def main() -> None:
     """
     Scheduling function for regular call.
@@ -100,9 +105,13 @@ def main() -> None:
                     calc_requested,
                 )
                 # Start Telegram-Bot and send message
-                th.check_and_verify_bot_connection()
-                if th.verified_bot_connection["verified"]:
-                    th.send_message(message)
+        th.check_and_verify_bot_connection()
+        if th.verified_bot_connection["verified"]:
+            # ToDo: Update time an den Bot anpassen
+            schedule.every(10).seconds.do(th.schedule_bot)
+            # ToDo: immer die hälfte von Bot-Zeit? aber größer 1 oder 2?
+            schedule.every(5).seconds.do(handle_communication)
+            th.send_message(message)
 
         while True:
             schedule.run_pending()
