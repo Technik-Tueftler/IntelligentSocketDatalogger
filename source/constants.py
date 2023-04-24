@@ -3,6 +3,7 @@ File contains all constants for easy central import and usage.
 """
 CONFIGURATION_FILE_PATH = "../files/config.json"
 DEVICES_FILE_PATH = "../files/devices.json"
+CHAT_ID_FILE_PATH = "../files/chat_id.txt"
 TIMEOUT_RESPONSE_TIME = 20
 LOGGING_MAX_LEN_FAILURE = 5
 TIME_OF_DAY_SCHEDULE_MATCH = r"^(?:[01]\d|2[0-3]):(?:[0-5]\d)$"

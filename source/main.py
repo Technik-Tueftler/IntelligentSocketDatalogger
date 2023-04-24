@@ -66,6 +66,10 @@ def write_data(device_data: list):
 
 
 def handle_communication() -> None:
+    """
+    Communication routine function to handle all requests for the main function.
+    :return: None
+    """
     while not com.bot_to_main.empty():
         req = com.bot_to_main.get()
         if req.command == "status":
@@ -104,13 +108,15 @@ def main() -> None:
                     settings | {"device_name": device_name},
                     calc_requested,
                 )
-                # Start Telegram-Bot and send message
+        # Start Telegram-Bot and send message
         th.check_and_verify_bot_connection()
         if th.verified_bot_connection["verified"]:
-            # ToDo: Update time an den Bot anpassen
-            schedule.every(10).seconds.do(th.schedule_bot)
-            # ToDo: immer die hälfte von Bot-Zeit? aber größer 1 oder 2?
-            schedule.every(5).seconds.do(handle_communication)
+            schedule.every(th.verified_bot_connection["bot_update_time"]).seconds.do(
+                th.schedule_bot
+            )
+            schedule.every(
+                th.verified_bot_connection["bot_request_handle_time"]
+            ).seconds.do(handle_communication)
             th.send_message(message)
 
         while True:
