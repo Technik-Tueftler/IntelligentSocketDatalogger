@@ -17,6 +17,12 @@
       "yearly": true,
       "on_threshold": 2,
       "off_threshold": 1
+    },
+    "energy_alarm":
+    {
+      "active": true,
+      "threshold_wh": 100,
+      "period_min": 30
     }
   },
   "Waermepumpe":

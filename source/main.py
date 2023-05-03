@@ -22,6 +22,7 @@ from source import communication as com
 from source.constants import DEVICES_FILE_PATH
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
+started_devices = []
 
 
 def fetch_device_data(settings: dict) -> None:
@@ -96,6 +97,7 @@ def main() -> None:
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_device_data, device_settings
                 )
+                started_devices.append("device_name")
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
                 support_functions.validation_power_on_parameter(

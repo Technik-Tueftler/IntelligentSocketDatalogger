@@ -57,6 +57,7 @@ def pull_messages() -> None:
     """
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     results = requests.get(url).json()
+    print(results)
     messages = [
         result["message"]["text"]
         for result in results["result"]
@@ -69,12 +70,26 @@ def pull_messages() -> None:
         if result["message"]["message_id"]
         > verified_bot_connection["last_received_message"]
     ]
+    print(messages)
     for message in messages:
         if message.lower().strip() == "/start":
             chat_id = results["result"][0]["message"]["chat"]["id"]
             start(chat_id)
         elif message.lower().strip() == "/status":
             com.bot_to_main.put(com.Request("status"))
+        elif message.lower().strip() == "/devices":
+            # com.bot_to_main.put(com.Request("devices"))
+            url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+            inline_keyboard = [[{"text": "Device 1", "callback_data": "device_1_callback"},
+                                {"text": "Device 2", "callback_data": "device_2_callback"}]]
+
+            message = "Please choose:"
+            payload = {"chat_id": CHAT_ID, "text": message, "reply_markup": {
+                "inline_keyboard": inline_keyboard}}
+            headers = {'Content-type': 'application/json'}
+
+            #response = requests.post(url, data=json.dumps(payload), headers=headers)
+            response = requests.post(url, json=payload)
     if len(messages_id) <= 0:
         return
     verified_bot_connection["last_received_message"] = max(messages_id)
