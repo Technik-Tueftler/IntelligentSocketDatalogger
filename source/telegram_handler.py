@@ -6,13 +6,16 @@ All functions to operate the features for the telegram bot.
 import os
 import json
 import requests
+from collections import namedtuple
 from source import logging_helper as lh
 from source import communication as com
 from source.constants import CONFIGURATION_FILE_PATH, CHAT_ID_FILE_PATH
 
-
 TOKEN = os.getenv("TB_TOKEN", "")
 CHAT_ID = os.getenv("TB_CHAT_ID", "")
+
+Message = namedtuple("Message", ["chat_id", "message_id", "text"])
+Callback = namedtuple("Callback", ["message_id", "action", "value"])
 
 verified_bot_connection = {
     "verified": True,
@@ -57,7 +60,6 @@ def pull_messages() -> None:
     """
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     results = requests.get(url).json()
-    print(results)
     messages = [
         result["message"]["text"]
         for result in results["result"]
@@ -70,18 +72,18 @@ def pull_messages() -> None:
         if result["message"]["message_id"]
         > verified_bot_connection["last_received_message"]
     ]
-    print(messages)
     for message in messages:
         if message.lower().strip() == "/start":
-            chat_id = results["result"][0]["message"]["chat"]["id"]
+            chat_id = results["result"][-1]["message"]["chat"]["id"]
             start(chat_id)
         elif message.lower().strip() == "/status":
             com.bot_to_main.put(com.Request("status"))
         elif message.lower().strip() == "/devices":
-            # com.bot_to_main.put(com.Request("devices"))
+            com.bot_to_main.put(com.Request("devices"))
+        elif message.lower().strip() == "/setalarm":
             url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-            inline_keyboard = [[{"text": "Device 1", "callback_data": "device_1_callback"},
-                                {"text": "Device 2", "callback_data": "device_2_callback"}]]
+            inline_keyboard = [[{"text": "Device 1", "callback_data": json.dumps({"action": "set_alarm", "device": "Device 1"})},
+                                {"text": "Device 2", "callback_data": "setAlarm?device_2"}]]
 
             message = "Please choose:"
             payload = {"chat_id": CHAT_ID, "text": message, "reply_markup": {
@@ -90,6 +92,7 @@ def pull_messages() -> None:
 
             #response = requests.post(url, data=json.dumps(payload), headers=headers)
             response = requests.post(url, json=payload)
+            print(response)
     if len(messages_id) <= 0:
         return
     verified_bot_connection["last_received_message"] = max(messages_id)
@@ -102,7 +105,7 @@ def handle_communication() -> None:
     """
     while not com.main_to_bot.empty():
         req = com.main_to_bot.get()
-        if req.command == "status":
+        if req.command in ["status", "devices"]:
             send_message(req.response)
 
 
@@ -165,6 +168,41 @@ def check_and_verify_bot_connection() -> None:
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
 
 
+def get_updates() -> list:
+    messages = []
+    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+    update = requests.get(url).json()
+    for result in update["result"]:
+        if "message" in result:
+            if result["message"]["message_id"] > verified_bot_connection["last_received_message"]:
+                messages.append(Message(chat_id=result["message"]["chat"]["id"],
+                                        message_id=result["message"]["message_id"],
+                                        text=result["message"]["text"]))
+        elif "callback_query" in result:
+            if result["callback_query"]["message"]["message_id"] > verified_bot_connection["last_received_message"]:
+                messages.append(Callback(message_id=["callback_query"]["message"]["message_id"],
+                                         action=json.loads(result["callback_query"]["data"])["action"],
+                                         value=json.loads(result["callback_query"]["data"])["value"]))
+    return messages
+
+
+def set_commands() -> None:
+    # ToDo: Sinnvollen call finden wo es aufgerufen wird.
+    url = f"https://api.telegram.org/bot{TOKEN}/setMyCommands"
+    commands = [{"command": "/start", "description": "Initialization off the app"},
+                {"command": "/status", "description": "Get current status of ISDL"},
+                {"command": "/devices", "description": "Get all running devices"}]
+
+    payload = {"commands": commands}
+
+    response = requests.post(url, json=payload)
+
+    if response.status_code == 200:
+        print("Commands set successfully.")
+    else:
+        print("Error setting commands: ", response.text)
+
+
 def schedule_bot() -> None:
     """
     Schedule which functions should be called regular to ensure the communication
@@ -181,9 +219,11 @@ def main() -> None:
     :return: None
     """
     # pull_messages()
-    check_and_verify_bot_connection()
+    # check_and_verify_bot_connection()
     # poll_messages()
     # send_message("geht doch")
+    get_updates()
+    # set_commands()
 
 
 if __name__ == "__main__":

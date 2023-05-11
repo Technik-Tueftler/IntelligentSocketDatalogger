@@ -75,6 +75,9 @@ def handle_communication() -> None:
         req = com.bot_to_main.get()
         if req.command == "status":
             com.main_to_bot.put(com.Response("App is running", "status"))
+        elif req.command == "devices":
+            return_string = "\n".join(started_devices)
+            com.main_to_bot.put(com.Response(return_string, "devices"))
 
 
 def main() -> None:
@@ -97,7 +100,7 @@ def main() -> None:
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_device_data, device_settings
                 )
-                started_devices.append("device_name")
+                started_devices.append(device_name)
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
                 support_functions.validation_power_on_parameter(
