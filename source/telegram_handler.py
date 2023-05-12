@@ -58,44 +58,29 @@ def pull_messages() -> None:
     In the last step it handles the commands which was sent by user and add them to the Queue.
     :return:
     """
-    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    results = requests.get(url).json()
-    messages = [
-        result["message"]["text"]
-        for result in results["result"]
-        if result["message"]["message_id"]
-        > verified_bot_connection["last_received_message"]
-    ]
-    messages_id = [
-        result["message"]["message_id"]
-        for result in results["result"]
-        if result["message"]["message_id"]
-        > verified_bot_connection["last_received_message"]
-    ]
+    messages = get_updates()
+    if len(messages) <= 0: return
     for message in messages:
-        if message.lower().strip() == "/start":
-            chat_id = results["result"][-1]["message"]["chat"]["id"]
-            start(chat_id)
-        elif message.lower().strip() == "/status":
-            com.bot_to_main.put(com.Request("status"))
-        elif message.lower().strip() == "/devices":
-            com.bot_to_main.put(com.Request("devices"))
-        elif message.lower().strip() == "/setalarm":
-            url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-            inline_keyboard = [[{"text": "Device 1", "callback_data": json.dumps({"action": "set_alarm", "device": "Device 1"})},
-                                {"text": "Device 2", "callback_data": "setAlarm?device_2"}]]
-
-            message = "Please choose:"
-            payload = {"chat_id": CHAT_ID, "text": message, "reply_markup": {
-                "inline_keyboard": inline_keyboard}}
-            headers = {'Content-type': 'application/json'}
-
-            #response = requests.post(url, data=json.dumps(payload), headers=headers)
-            response = requests.post(url, json=payload)
-            print(response)
-    if len(messages_id) <= 0:
-        return
-    verified_bot_connection["last_received_message"] = max(messages_id)
+        if isinstance(message, Message):
+            if message.text.lower().strip() == "/start":
+                start(message.chat_id)
+            elif message.text.lower().strip() == "/status":
+                com.bot_to_main.put(com.Request("status"))
+            elif message.text.lower().strip() == "/devices":
+                com.bot_to_main.put(com.Request("devices"))
+            elif message.text.lower().strip() == "/setalarm":
+                url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+                inline_keyboard = [[{"text": "Device 1", "callback_data": json.dumps({"action": "set_alarm", "device": "Device 1"})},
+                                    {"text": "Device 2", "callback_data": json.dumps({"action": "set_alarm", "device": "Device 2"})}
+                                    ]]
+                user_message = "Please choose:"
+                payload = {"chat_id": CHAT_ID, "text": user_message, "reply_markup": {
+                    "inline_keyboard": inline_keyboard}}
+                response = requests.post(url, json=payload)
+        elif isinstance(message, Callback):
+            print(message)
+        if message.message_id > verified_bot_connection["last_received_message"]:
+            verified_bot_connection["last_received_message"] = message.message_id
 
 
 def handle_communication() -> None:
@@ -129,11 +114,18 @@ def check_and_verify_bot_connection() -> None:
     """
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     token_check_response = requests.get(url).json()
-    last_message = (
-        token_check_response["result"][-1]["message"]["message_id"]
-        if token_check_response["result"]
-        else 0
-    )
+    if "message" in token_check_response["result"][-1]:
+        last_message = (
+            token_check_response["result"][-1]["message"]["message_id"]
+            if token_check_response["result"]
+            else 0
+        )
+    else:
+        last_message = (
+            token_check_response["result"][-1]["callback_query"]["message"]["message_id"]
+            if token_check_response["result"]
+            else 0
+        )
     verified_bot_connection["last_received_message"] = last_message
     if token_check_response["ok"]:
         verified_bot_connection["token"] = True
@@ -180,10 +172,11 @@ def get_updates() -> list:
                                         text=result["message"]["text"]))
         elif "callback_query" in result:
             if result["callback_query"]["message"]["message_id"] > verified_bot_connection["last_received_message"]:
-                messages.append(Callback(message_id=["callback_query"]["message"]["message_id"],
+                messages.append(Callback(message_id=result["callback_query"]["message"]["message_id"],
                                          action=json.loads(result["callback_query"]["data"])["action"],
-                                         value=json.loads(result["callback_query"]["data"])["value"]))
+                                         value=json.loads(result["callback_query"]["data"])))
     return messages
+
 
 
 def set_commands() -> None:
@@ -191,7 +184,8 @@ def set_commands() -> None:
     url = f"https://api.telegram.org/bot{TOKEN}/setMyCommands"
     commands = [{"command": "/start", "description": "Initialization off the app"},
                 {"command": "/status", "description": "Get current status of ISDL"},
-                {"command": "/devices", "description": "Get all running devices"}]
+                {"command": "/devices", "description": "Get all running devices"},
+                {"command": "/setalarm", "description": "Set power alarm for devices"}]
 
     payload = {"commands": commands}
 
@@ -222,8 +216,8 @@ def main() -> None:
     # check_and_verify_bot_connection()
     # poll_messages()
     # send_message("geht doch")
-    get_updates()
-    # set_commands()
+    # get_updates()
+    set_commands()
 
 
 if __name__ == "__main__":
