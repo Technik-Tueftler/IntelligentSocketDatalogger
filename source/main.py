@@ -74,10 +74,12 @@ def handle_communication() -> None:
     while not com.bot_to_main.empty():
         req = com.bot_to_main.get()
         if req.command == "status":
-            com.main_to_bot.put(com.Response("App is running", "status"))
+            com.main_to_bot.put(com.Response("status", {"output_text": "App is running"}))
         elif req.command == "devices":
             return_string = "\n".join(started_devices)
-            com.main_to_bot.put(com.Response(return_string, "devices"))
+            com.main_to_bot.put(com.Response("devices", {"output_text": return_string}))
+        elif req.command == "setalarm":
+            com.main_to_bot.put(com.Response("setalarm", {"device_list": started_devices.copy()}))
 
 
 def main() -> None:

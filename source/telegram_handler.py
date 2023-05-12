@@ -9,7 +9,7 @@ import requests
 from collections import namedtuple
 from source import logging_helper as lh
 from source import communication as com
-from source.constants import CONFIGURATION_FILE_PATH, CHAT_ID_FILE_PATH
+from source.constants import CONFIGURATION_FILE_PATH, CHAT_ID_FILE_PATH, INLINE_KEYS_COLUMNS
 
 TOKEN = os.getenv("TB_TOKEN", "")
 CHAT_ID = os.getenv("TB_CHAT_ID", "")
@@ -52,6 +52,25 @@ def start(chat_id: str) -> None:
             verified_bot_connection["chat_id"] = True
 
 
+def send_inline_keyboard_for_set_alarm(devices) -> None:
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    inline_keyboard = []
+    while devices:
+        temp_list = []
+        for _ in range(0, INLINE_KEYS_COLUMNS):
+            if not devices: break
+            device = devices.pop()
+            temp_dict = {"text": device,
+                         "callback_data": json.dumps({"action": "set_alarm", "device": device})}
+            temp_list.append(temp_dict)
+        inline_keyboard.append(temp_list)
+
+    user_message = "Please choose:"
+    payload = {"chat_id": CHAT_ID, "text": user_message, "reply_markup": {
+        "inline_keyboard": inline_keyboard}}
+    response = requests.post(url, json=payload)
+
+
 def pull_messages() -> None:
     """
     This function fetches the last messages and filter which ones have already checked.
@@ -69,15 +88,9 @@ def pull_messages() -> None:
             elif message.text.lower().strip() == "/devices":
                 com.bot_to_main.put(com.Request("devices"))
             elif message.text.lower().strip() == "/setalarm":
-                url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-                inline_keyboard = [[{"text": "Device 1", "callback_data": json.dumps({"action": "set_alarm", "device": "Device 1"})},
-                                    {"text": "Device 2", "callback_data": json.dumps({"action": "set_alarm", "device": "Device 2"})}
-                                    ]]
-                user_message = "Please choose:"
-                payload = {"chat_id": CHAT_ID, "text": user_message, "reply_markup": {
-                    "inline_keyboard": inline_keyboard}}
-                response = requests.post(url, json=payload)
+                com.bot_to_main.put(com.Request("setalarm"))
         elif isinstance(message, Callback):
+            # ToDo: Hier gehts weiter
             print(message)
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
@@ -91,7 +104,9 @@ def handle_communication() -> None:
     while not com.main_to_bot.empty():
         req = com.main_to_bot.get()
         if req.command in ["status", "devices"]:
-            send_message(req.response)
+            send_message(req.data["output_text"])
+        elif req.command == "setalarm":
+            send_inline_keyboard_for_set_alarm(req.data["device_list"])
 
 
 def send_message(message: str) -> None:
@@ -176,7 +191,6 @@ def get_updates() -> list:
                                          action=json.loads(result["callback_query"]["data"])["action"],
                                          value=json.loads(result["callback_query"]["data"])))
     return messages
-
 
 
 def set_commands() -> None:

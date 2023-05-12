@@ -5,7 +5,7 @@ Collection of classes and structures needed to ensure communication
 between the main app and the telegram bot.
 """
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from queue import Queue
 
 bot_to_main = Queue()
@@ -18,9 +18,9 @@ class Response:
     Response object for communication that comes to a request.
     """
 
-    response: str
     command: str
-    timestamp: datetime = datetime.utcnow()
+    data: dict = field(default_factory=lambda: {})
+    timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
 @dataclass
