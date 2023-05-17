@@ -19,6 +19,7 @@ from source import calculations as cc
 from source import logging_helper as lh
 from source import telegram_handler as th
 from source import communication as com
+from source import energy_monitoring as em
 from source.constants import DEVICES_FILE_PATH
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
@@ -74,12 +75,16 @@ def handle_communication() -> None:
     while not com.bot_to_main.empty():
         req = com.bot_to_main.get()
         if req.command == "status":
-            com.main_to_bot.put(com.Response("status", {"output_text": "App is running"}))
+            com.main_to_bot.put(
+                com.Response("status", {"output_text": "App is running"})
+            )
         elif req.command == "devices":
             return_string = "\n".join(started_devices)
             com.main_to_bot.put(com.Response("devices", {"output_text": return_string}))
         elif req.command == "setalarm":
-            com.main_to_bot.put(com.Response("setalarm", {"device_list": started_devices.copy()}))
+            com.main_to_bot.put(
+                com.Response("setalarm", {"device_list": started_devices.copy()})
+            )
 
 
 def main() -> None:
@@ -118,6 +123,7 @@ def main() -> None:
         # Start Telegram-Bot and send message
         th.check_and_verify_bot_connection()
         if th.verified_bot_connection["verified"]:
+            th.set_commands()
             schedule.every(th.verified_bot_connection["bot_update_time"]).seconds.do(
                 th.schedule_bot
             )
@@ -125,6 +131,10 @@ def main() -> None:
                 th.verified_bot_connection["bot_request_handle_time"]
             ).seconds.do(handle_communication)
             th.send_message(message)
+        # Start energy monitoring for each device
+        em.check_monitoring_requested(started_devices)
+        for device in em.watch_devices:
+            schedule.every(device.period_min).minutes.do(em.run_monitoring, device)
 
         while True:
             schedule.run_pending()

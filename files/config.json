@@ -11,6 +11,7 @@
   {
     "chat_id_source": "auto",
     "chat_id": "",
-    "update_time": 10
+    "update_time": 10,
+    "inline_keys_columns": "foo"
   }
 }

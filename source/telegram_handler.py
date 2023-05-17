@@ -5,11 +5,18 @@ All functions to operate the features for the telegram bot.
 """
 import os
 import json
-import requests
 from collections import namedtuple
+import requests
 from source import logging_helper as lh
 from source import communication as com
-from source.constants import CONFIGURATION_FILE_PATH, CHAT_ID_FILE_PATH, INLINE_KEYS_COLUMNS
+from source.constants import (
+    CONFIGURATION_FILE_PATH,
+    CHAT_ID_FILE_PATH,
+    DEFAULT_INLINE_KEYS_COLUMNS,
+    DEFAULT_BOT_UPDATE_TIME,
+    DEFAULT_BOT_REQUEST_HANDLE_TIME,
+    USER_MESSAGE_INLINE_KEYBOARD_SET_ALARM,
+)
 
 TOKEN = os.getenv("TB_TOKEN", "")
 CHAT_ID = os.getenv("TB_CHAT_ID", "")
@@ -24,8 +31,9 @@ verified_bot_connection = {
     "chat_id": False,
     "chat_id_value": CHAT_ID,
     "last_received_message": 0,
-    "bot_update_time": 10,
-    "bot_request_handle_time": 5,
+    "bot_update_time": DEFAULT_BOT_UPDATE_TIME,
+    "bot_request_handle_time": DEFAULT_BOT_REQUEST_HANDLE_TIME,
+    "inline_keys_columns": DEFAULT_INLINE_KEYS_COLUMNS,
 }
 
 
@@ -53,32 +61,44 @@ def start(chat_id: str) -> None:
 
 
 def send_inline_keyboard_for_set_alarm(devices) -> None:
+    """
+    Function to create and send the inline keyboard to show all devices
+    based on the adjustable display settings.
+    :param devices:
+    :return:
+    """
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     inline_keyboard = []
     while devices:
         temp_list = []
-        for _ in range(0, INLINE_KEYS_COLUMNS):
-            if not devices: break
+        for _ in range(0, verified_bot_connection["inline_keys_columns"]):
+            if not devices:
+                break
             device = devices.pop()
-            temp_dict = {"text": device,
-                         "callback_data": json.dumps({"action": "set_alarm", "device": device})}
+            temp_dict = {
+                "text": device,
+                "callback_data": json.dumps({"action": "set_alarm", "device": device}),
+            }
             temp_list.append(temp_dict)
         inline_keyboard.append(temp_list)
 
-    user_message = "Please choose:"
-    payload = {"chat_id": CHAT_ID, "text": user_message, "reply_markup": {
-        "inline_keyboard": inline_keyboard}}
-    response = requests.post(url, json=payload)
+    user_message = USER_MESSAGE_INLINE_KEYBOARD_SET_ALARM
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": user_message,
+        "reply_markup": {"inline_keyboard": inline_keyboard},
+    }
+    _ = requests.post(url, json=payload)
 
 
 def pull_messages() -> None:
     """
-    This function fetches the last messages and filter which ones have already checked.
-    In the last step it handles the commands which was sent by user and add them to the Queue.
-    :return:
+    This function handles the messages and schedule the next
+    steps based on the input.
     """
     messages = get_updates()
-    if len(messages) <= 0: return
+    if len(messages) <= 0:
+        return
     for message in messages:
         if isinstance(message, Message):
             if message.text.lower().strip() == "/start":
@@ -90,8 +110,9 @@ def pull_messages() -> None:
             elif message.text.lower().strip() == "/setalarm":
                 com.bot_to_main.put(com.Request("setalarm"))
         elif isinstance(message, Callback):
-            # ToDo: Hier gehts weiter
-            print(message)
+            if message.action == "set_alarm":
+                # ToDo: Aufruf der Funktion die die letzten 30 Minuten die Arbeit misst.
+                print(message)
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
 
@@ -121,6 +142,26 @@ def send_message(message: str) -> None:
     requests.get(url).json()
 
 
+def check_exist_last_message(token_check_response: dict) -> int:
+    if len(token_check_response["result"]) < 1:
+        return 0
+    if "message" in token_check_response["result"][-1]:
+        last_message_id = (
+            token_check_response["result"][-1]["message"]["message_id"]
+            if token_check_response["result"]
+            else 0
+        )
+    else:
+        last_message_id = (
+            token_check_response["result"][-1]["callback_query"]["message"][
+                "message_id"
+            ]
+            if token_check_response["result"]
+            else 0
+        )
+    return last_message_id
+
+
 def check_and_verify_bot_connection() -> None:
     """
     Function controls the passed env variables and checks if a connection
@@ -129,19 +170,9 @@ def check_and_verify_bot_connection() -> None:
     """
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     token_check_response = requests.get(url).json()
-    if "message" in token_check_response["result"][-1]:
-        last_message = (
-            token_check_response["result"][-1]["message"]["message_id"]
-            if token_check_response["result"]
-            else 0
-        )
-    else:
-        last_message = (
-            token_check_response["result"][-1]["callback_query"]["message"]["message_id"]
-            if token_check_response["result"]
-            else 0
-        )
-    verified_bot_connection["last_received_message"] = last_message
+    verified_bot_connection["last_received_message"] = check_exist_last_message(
+        token_check_response
+    )
     if token_check_response["ok"]:
         verified_bot_connection["token"] = True
     else:
@@ -174,41 +205,74 @@ def check_and_verify_bot_connection() -> None:
         )
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
 
+    if "inline_keys_columns" in data["telegrambot"]:
+        value_inline_keys_columns = data["telegrambot"]["inline_keys_columns"]
+        if isinstance(value_inline_keys_columns, int):
+            verified_bot_connection[
+                "verified_bot_connection"
+            ] = value_inline_keys_columns
+
 
 def get_updates() -> list:
+    """
+    This function fetches the last messages and filter which ones
+    have already checked. In the last step, it is split into messages
+    from the user or into callbacks from inline forms.
+    :return: List with all not handled messages.
+    """
     messages = []
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     update = requests.get(url).json()
     for result in update["result"]:
         if "message" in result:
-            if result["message"]["message_id"] > verified_bot_connection["last_received_message"]:
-                messages.append(Message(chat_id=result["message"]["chat"]["id"],
-                                        message_id=result["message"]["message_id"],
-                                        text=result["message"]["text"]))
+            if (
+                result["message"]["message_id"]
+                > verified_bot_connection["last_received_message"]
+            ):
+                messages.append(
+                    Message(
+                        chat_id=result["message"]["chat"]["id"],
+                        message_id=result["message"]["message_id"],
+                        text=result["message"]["text"],
+                    )
+                )
         elif "callback_query" in result:
-            if result["callback_query"]["message"]["message_id"] > verified_bot_connection["last_received_message"]:
-                messages.append(Callback(message_id=result["callback_query"]["message"]["message_id"],
-                                         action=json.loads(result["callback_query"]["data"])["action"],
-                                         value=json.loads(result["callback_query"]["data"])))
+            if (
+                result["callback_query"]["message"]["message_id"]
+                > verified_bot_connection["last_received_message"]
+            ):
+                messages.append(
+                    Callback(
+                        message_id=result["callback_query"]["message"]["message_id"],
+                        action=json.loads(result["callback_query"]["data"])["action"],
+                        value=json.loads(result["callback_query"]["data"]),
+                    )
+                )
     return messages
 
 
 def set_commands() -> None:
-    # ToDo: Sinnvollen call finden wo es aufgerufen wird.
+    """
+    Set all commands for the Telegram Bot so that the user has easier access
+    to the commands.
+    :return: None
+    """
     url = f"https://api.telegram.org/bot{TOKEN}/setMyCommands"
-    commands = [{"command": "/start", "description": "Initialization off the app"},
-                {"command": "/status", "description": "Get current status of ISDL"},
-                {"command": "/devices", "description": "Get all running devices"},
-                {"command": "/setalarm", "description": "Set power alarm for devices"}]
+    commands = [
+        {"command": "/start", "description": "Initialization off the app"},
+        {"command": "/status", "description": "Get current status of ISDL"},
+        {"command": "/devices", "description": "Get all running devices"},
+        {"command": "/setalarm", "description": "Set power alarm for devices"},
+    ]
 
     payload = {"commands": commands}
 
     response = requests.post(url, json=payload)
 
-    if response.status_code == 200:
-        print("Commands set successfully.")
-    else:
-        print("Error setting commands: ", response.text)
+    # if response.status_code == 200:
+    #     print("Commands set successfully.")
+    # else:
+    #     print("Error setting commands: ", response.text)
 
 
 def schedule_bot() -> None:
