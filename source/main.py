@@ -133,7 +133,7 @@ def main() -> None:
             th.send_message(message)
         # Start energy monitoring for each device
         em.check_monitoring_requested(started_devices)
-        for device in em.watch_devices:
+        for device in em.observed_devices:
             schedule.every(device.period_min).minutes.do(em.run_monitoring, device)
 
         while True:

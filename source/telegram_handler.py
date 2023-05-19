@@ -142,21 +142,26 @@ def send_message(message: str) -> None:
     requests.get(url).json()
 
 
-def check_exist_last_message(token_check_response: dict) -> int:
-    if len(token_check_response["result"]) < 1:
+def check_exist_last_message(get_update_response: dict) -> int:
+    """
+
+    :param get_update_response: Data from api with all messages from last 24h
+    :return: id if the last message
+    """
+    if len(get_update_response["result"]) < 1:
         return 0
-    if "message" in token_check_response["result"][-1]:
+    if "message" in get_update_response["result"][-1]:
         last_message_id = (
-            token_check_response["result"][-1]["message"]["message_id"]
-            if token_check_response["result"]
+            get_update_response["result"][-1]["message"]["message_id"]
+            if get_update_response["result"]
             else 0
         )
     else:
         last_message_id = (
-            token_check_response["result"][-1]["callback_query"]["message"][
+            get_update_response["result"][-1]["callback_query"]["message"][
                 "message_id"
             ]
-            if token_check_response["result"]
+            if get_update_response["result"]
             else 0
         )
     return last_message_id
@@ -267,7 +272,7 @@ def set_commands() -> None:
 
     payload = {"commands": commands}
 
-    response = requests.post(url, json=payload)
+    _ = requests.post(url, json=payload)
 
     # if response.status_code == 200:
     #     print("Commands set successfully.")
