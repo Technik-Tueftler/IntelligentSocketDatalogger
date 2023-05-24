@@ -92,6 +92,7 @@ def check_and_verify_db_connection() -> None:
     Function controls the passed env variables and checks if they are valid.
     :return: None
     """
+    if login_information.verified is False: return
     try:
         with InfluxDBConnection() as connection:
             connection.ping()

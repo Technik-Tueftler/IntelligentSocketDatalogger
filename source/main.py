@@ -131,10 +131,10 @@ def main() -> None:
                 th.verified_bot_connection["bot_request_handle_time"]
             ).seconds.do(handle_communication)
             th.send_message(message)
-        # Start energy monitoring for each device
-        em.check_monitoring_requested(started_devices)
-        for device in em.observed_devices:
-            schedule.every(device.period_min).minutes.do(em.run_monitoring, device)
+            # Start energy monitoring for each device
+            em.check_monitoring_requested(started_devices)
+            for device in em.observed_devices:
+                schedule.every(device.period_min).minutes.do(em.run_monitoring, device)
 
         while True:
             schedule.run_pending()
@@ -150,7 +150,7 @@ def main() -> None:
 if __name__ == "__main__":
     timestamp_now = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S")
     message = f"Start Program: {timestamp_now} UTC"
-    lh.write_log(lh.LoggingLevel.INFO.value, message)
     support_functions.check_and_verify_db_connection()
     if support_functions.login_information.verified is not False:
+        lh.write_log(lh.LoggingLevel.INFO.value, message)
         main()

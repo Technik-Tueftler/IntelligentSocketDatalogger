@@ -19,6 +19,7 @@ from source.constants import (
 )
 
 TOKEN = os.getenv("TB_TOKEN", "")
+# ToDo Chat id noch aus txt Datei lesen und schauen ob man überhauptes über die Einstellung manuell machen kann.
 CHAT_ID = os.getenv("TB_CHAT_ID", "")
 
 Message = namedtuple("Message", ["chat_id", "message_id", "text"])
@@ -51,13 +52,11 @@ def start(chat_id: str) -> None:
         return
     if "chat_id_source" in data["telegrambot"]:
         if data["telegrambot"]["chat_id_source"] == "auto":
-            data["telegrambot"]["chat_id"] = chat_id
-            verified_bot_connection["chat_id"] = True
             with open(CHAT_ID_FILE_PATH, "w", encoding="utf-8") as file:
                 file.write(str(chat_id))
-        elif data["telegrambot"]["chat_id_source"] == "manuel":
-            verified_bot_connection["chat_id_value"] = chat_id
-            verified_bot_connection["chat_id"] = True
+    verified_bot_connection["chat_id_value"] = chat_id
+    verified_bot_connection["chat_id"] = True
+    send_message("Bot is successfully set up.")
 
 
 def send_inline_keyboard_for_set_alarm(devices) -> None:
@@ -111,7 +110,7 @@ def pull_messages() -> None:
                 com.bot_to_main.put(com.Request("setalarm"))
         elif isinstance(message, Callback):
             if message.action == "set_alarm":
-                # ToDo: Aufruf der Funktion die die letzten 30 Minuten die Arbeit misst.
+                # ToDo Aufruf der Funktion die die letzten 30 Minuten die Arbeit misst.
                 print(message)
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
@@ -167,34 +166,66 @@ def check_exist_last_message(get_update_response: dict) -> int:
     return last_message_id
 
 
-def check_and_verify_bot_connection() -> None:
+def check_and_verify_token() -> None:
     """
-    Function controls the passed env variables and checks if a connection
-    to the chat can be established
-    :return:
+    Function checks Bot Token and verify connection to chat
+    :return: None
     """
-    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    token_check_response = requests.get(url).json()
-    verified_bot_connection["last_received_message"] = check_exist_last_message(
-        token_check_response
-    )
-    if token_check_response["ok"]:
-        verified_bot_connection["token"] = True
-    else:
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+        token_check_response = requests.get(url).json()
+        if token_check_response["ok"]:
+            verified_bot_connection["token"] = True
+            verified_bot_connection["last_received_message"] = check_exist_last_message(
+                token_check_response
+            )
+        else:
+            raise ValueError("Telegram-Bot could not be started. Check Bot-Token.")
+    except ValueError as err:
         verified_bot_connection["verified"] = False
-        message = "Telegram-Bot could not be started. Check Bot-Token."
-        lh.write_log(lh.LoggingLevel.ERROR.value, message)
+        lh.write_log(lh.LoggingLevel.ERROR.value, err)
+
+
+def check_and_verify_chat_id() -> None:
+    """
+    Function checks all possible inputs for chat ID and verify.
+    :return: None
+    """
+    if os.path.exists(CHAT_ID_FILE_PATH):
+        with open(CHAT_ID_FILE_PATH, 'r') as datei:
+            chat_id = datei.read()
+        if chat_id:
+            verified_bot_connection["chat_id_value"] = chat_id
+            verified_bot_connection["chat_id"] = True
+
+    if not verified_bot_connection["chat_id"]:
+        if not CHAT_ID:
+            message = "It's currently not possible for the bot to write messages " \
+                      "because the CHAT_ID is still missing. Use the start command in the chat " \
+                      "or add the CHAT_ID to the env variables."
+            lh.write_log(lh.LoggingLevel.ERROR.value, message)
+        else:
+            verified_bot_connection["chat_id_value"] = CHAT_ID
+            verified_bot_connection["chat_id"] = True
+
+
+def check_and_verify_bot_config() -> None:
+    """
+    Checks and plausible the bot configuration with user inputs. If something is
+    wrong default values are taken.
+    :return: None
+    """
     with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
         data = json.load(file)
     if "telegrambot" not in data:
-        message = "Configuration for Telegram-Bot is missing in config.json."
+        message = "Configuration for Telegram-Bot is missing in config.json, the default values " \
+                  "are now adopted"
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
-        verified_bot_connection["verified"] = False
         return
     if "update_time" not in data["telegrambot"]:
-        message = "Configuration for Telegram-Bot is missing in config.json."
+        message = f"The update time for Telegram-Bot is missing in config.json. The default " \
+                  f"value of {DEFAULT_BOT_UPDATE_TIME} is assumed."
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
-        verified_bot_connection["verified"] = False
         return
     try:
         update_time_value = int(data["telegrambot"]["update_time"])
@@ -202,11 +233,15 @@ def check_and_verify_bot_connection() -> None:
             verified_bot_connection["bot_update_time"] = update_time_value
             verified_bot_connection["bot_request_handle_time"] = update_time_value // 2
         else:
-            verified_bot_connection["bot_update_time"] = 1
-            verified_bot_connection["bot_request_handle_time"] = 1
+            message = (
+                f"Too small value for Telegram-Bot update time. Default value "
+                f"{DEFAULT_BOT_UPDATE_TIME}s is used."
+            )
+            lh.write_log(lh.LoggingLevel.ERROR.value, message)
     except (TypeError, ValueError) as _:
         message = (
-            "Not valid value for Telegram-Bot update time. Default value (10s) is used."
+            f"Not valid value for Telegram-Bot update time. Default value "
+            f"{DEFAULT_BOT_UPDATE_TIME}s is used."
         )
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
 
@@ -216,6 +251,18 @@ def check_and_verify_bot_connection() -> None:
             verified_bot_connection[
                 "verified_bot_connection"
             ] = value_inline_keys_columns
+
+
+def check_and_verify_bot_connection() -> None:
+    """
+    Function controls the passed env variables and checks if a connection
+    to the chat can be established
+    :return:
+    """
+
+    check_and_verify_token()
+    if not verified_bot_connection["verified"]: return
+    check_and_verify_chat_id()
 
 
 def get_updates() -> list:
