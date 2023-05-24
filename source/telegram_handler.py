@@ -103,15 +103,15 @@ def pull_messages() -> None:
             if message.text.lower().strip() == "/start":
                 start(message.chat_id)
             elif message.text.lower().strip() == "/status":
-                com.bot_to_main.put(com.Request("status"))
+                com.to_main.put(com.Request("status"))
             elif message.text.lower().strip() == "/devices":
-                com.bot_to_main.put(com.Request("devices"))
+                com.to_main.put(com.Request("devices"))
             elif message.text.lower().strip() == "/setalarm":
-                com.bot_to_main.put(com.Request("setalarm"))
+                com.to_main.put(com.Request("setalarm"))
         elif isinstance(message, Callback):
             if message.action == "set_alarm":
-                # ToDo Aufruf der Funktion die die letzten 30 Minuten die Arbeit misst.
-                print(message)
+                com.to_energy_mon.put(com.Request(command="set_alarm",
+                                                  data={"device": message.data["device"]}))
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
 
@@ -121,12 +121,16 @@ def handle_communication() -> None:
     Check all the items in main to bot queue and handle the output to the user or further actions.
     :return: None
     """
-    while not com.main_to_bot.empty():
-        req = com.main_to_bot.get()
+    while not com.to_bot.empty():
+        req = com.to_bot.get()
         if req.command in ["status", "devices"]:
             send_message(req.data["output_text"])
         elif req.command == "setalarm":
             send_inline_keyboard_for_set_alarm(req.data["device_list"])
+        elif req.command == "alarm_message":
+            message = f"The energy consumption of {req.data['device_name']} is unusually high. " \
+                      f"Please check if the device works correctly."
+            send_message(message)
 
 
 def send_message(message: str) -> None:

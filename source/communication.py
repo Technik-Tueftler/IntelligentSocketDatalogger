@@ -8,8 +8,9 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from queue import Queue
 
-bot_to_main = Queue()
-main_to_bot = Queue()
+to_main = Queue()
+to_bot = Queue()
+to_energy_mon = Queue()
 
 
 @dataclass
@@ -30,7 +31,8 @@ class Request:
     """
 
     command: str
-    timestamp: datetime = datetime.utcnow()
+    data: dict = field(default_factory=lambda: {})
+    timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
 def main() -> None:
