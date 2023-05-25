@@ -19,7 +19,6 @@ from source.constants import (
 )
 
 TOKEN = os.getenv("TB_TOKEN", "")
-# ToDo Chat id noch aus txt Datei lesen und schauen ob man überhauptes über die Einstellung manuell machen kann.
 CHAT_ID = os.getenv("TB_CHAT_ID", "")
 
 Message = namedtuple("Message", ["chat_id", "message_id", "text"])
@@ -253,7 +252,7 @@ def check_and_verify_bot_config() -> None:
         value_inline_keys_columns = data["telegrambot"]["inline_keys_columns"]
         if isinstance(value_inline_keys_columns, int):
             verified_bot_connection[
-                "verified_bot_connection"
+                "inline_keys_columns"
             ] = value_inline_keys_columns
 
 

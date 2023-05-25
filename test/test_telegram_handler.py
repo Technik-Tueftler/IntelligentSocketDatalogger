@@ -6,7 +6,13 @@ from unittest.mock import patch, mock_open
 from source.telegram_handler import (
     verified_bot_connection,
     check_and_verify_token,
-    check_and_verify_chat_id
+    check_and_verify_chat_id,
+    check_and_verify_bot_config,
+)
+from source.constants import (
+    DEFAULT_BOT_UPDATE_TIME,
+    DEFAULT_BOT_REQUEST_HANDLE_TIME,
+    DEFAULT_INLINE_KEYS_COLUMNS,
 )
 
 
@@ -14,7 +20,8 @@ class TestCheckAndVerifyToken(unittest.TestCase):
     """
     Unit test for function check_and_verify_token()
     """
-    @patch('requests.get')
+
+    @patch("requests.get")
     def test_successful_token_check(self, mock_get):
         """
         This test checks whether the TOKEN read in is correct and the value
@@ -26,7 +33,7 @@ class TestCheckAndVerifyToken(unittest.TestCase):
         check_and_verify_token()
         self.assertTrue(verified_bot_connection["token"])
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_failed_token_check(self, mock_get):
         """
         This test checks whether the TOKEN read in is not correct and the value
@@ -43,11 +50,13 @@ class TestCheckAndVerifyChatID(unittest.TestCase):
     """
     Unit test for function check_and_verify_chat_id()
     """
-    def setUp(self):
-        self.mock_chat_id_value = ""
 
-    @patch('os.path.exists')
-    @patch('builtins.open', new_callable=mock_open, read_data='12345')
+    def setUp(self):
+        verified_bot_connection["chat_id_value"] = ""
+        verified_bot_connection["chat_id"] = False
+
+    @patch("os.path.exists")
+    @patch("builtins.open", new_callable=mock_open, read_data="12345")
     def test_existing_chat_id_file(self, _, mock_exists):
         """
         The function tests whether the content of an existing chat ID
@@ -59,10 +68,10 @@ class TestCheckAndVerifyChatID(unittest.TestCase):
         """
         mock_exists.return_value = True
         check_and_verify_chat_id()
-        self.assertEqual('12345', verified_bot_connection["chat_id_value"])
+        self.assertEqual("12345", verified_bot_connection["chat_id_value"])
         self.assertTrue(verified_bot_connection["chat_id"])
 
-    @patch('os.path.exists')
+    @patch("os.path.exists")
     def test_missing_chat_id_file(self, mock_exists):
         """
         The function checks if the flag for the chat_id is set to False
@@ -71,15 +80,14 @@ class TestCheckAndVerifyChatID(unittest.TestCase):
         :param mock_exists: mock for os.path.exists
         :return: None
         """
-        verified_bot_connection = {"chat_id_value": self.mock_chat_id_value, "chat_id": False}
         mock_exists.return_value = False
         check_and_verify_chat_id()
         self.assertFalse(verified_bot_connection["chat_id"])
         self.assertEqual("", verified_bot_connection["chat_id_value"])
 
-    @patch('os.path.exists')
-    @patch('source.telegram_handler.CHAT_ID', '54321')
-    def test_existing_chat_id(self, mock_exists):
+    @patch("os.path.exists")
+    @patch("source.telegram_handler.CHAT_ID", "54321")
+    def test_existing_env_chat_id(self, mock_exists):
         """
         The function checks the value of the global variable CHAT_ID
         if the chat ID file does not exist and sets the value.
@@ -88,25 +96,262 @@ class TestCheckAndVerifyChatID(unittest.TestCase):
         """
         mock_exists.return_value = False
         check_and_verify_chat_id()
-        self.assertEqual('54321', verified_bot_connection["chat_id_value"])
+        self.assertEqual("54321", verified_bot_connection["chat_id_value"])
         self.assertTrue(verified_bot_connection["chat_id"])
 
-    @patch('os.path.exists')
-    @patch('source.telegram_handler.CHAT_ID', '')
-    def test_missing_chat_id(self, mock_exists):
+    @patch("os.path.exists")
+    @patch("source.telegram_handler.CHAT_ID", "")
+    def test_missing_env_chat_id(self, mock_exists):
         """
         The function checks the value of the global variable CHAT_ID
         if the chat ID file does not exist and sets the default value.
         :param mock_exists: mock for os.path.exists
         :return: None
         """
-        # verified_bot_connection["chat_id"] <- Steht hier noch True vom letzten Test drin?
-        verified_bot_connection = {"chat_id_value": self.mock_chat_id_value, "chat_id": False}
         mock_exists.return_value = False
         check_and_verify_chat_id()
-        self.assertEqual('', verified_bot_connection["chat_id_value"])
+        self.assertEqual("", verified_bot_connection["chat_id_value"])
         self.assertFalse(verified_bot_connection["chat_id"])
 
 
-if __name__ == '__main__':
+class TestCheckAndVerifyBotConfig(unittest.TestCase):
+    """
+    Unit test for function check_and_verify_bot_config()
+    """
+
+    def setUp(self):
+        verified_bot_connection["bot_update_time"] = DEFAULT_BOT_UPDATE_TIME
+        verified_bot_connection[
+            "bot_request_handle_time"
+        ] = DEFAULT_BOT_REQUEST_HANDLE_TIME
+        verified_bot_connection["inline_keys_columns"] = DEFAULT_INLINE_KEYS_COLUMNS
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_no_telegram_config(self, mock_load, mock_file_open):
+        """
+        Test if default values are still set if no telegram config is available.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return: None
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "not_telegrambot": {
+                "chat_id_source": "auto",
+                "update_time": 10,
+                "inline_keys_columns": 3,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(
+            DEFAULT_BOT_UPDATE_TIME, verified_bot_connection["bot_update_time"]
+        )
+        self.assertEqual(
+            DEFAULT_BOT_REQUEST_HANDLE_TIME,
+            verified_bot_connection["bot_request_handle_time"],
+        )
+        self.assertEqual(
+            DEFAULT_INLINE_KEYS_COLUMNS, verified_bot_connection["inline_keys_columns"]
+        )
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_no_update_time_config(self, mock_load, mock_file_open):
+        """
+        Test if default values are still set if no update_time in config is available.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return:
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "telegrambot": {
+                "chat_id_source": "auto",
+                "no_update_time": 10,
+                "inline_keys_columns": 3,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(
+            DEFAULT_BOT_UPDATE_TIME, verified_bot_connection["bot_update_time"]
+        )
+        self.assertEqual(
+            DEFAULT_BOT_REQUEST_HANDLE_TIME,
+            verified_bot_connection["bot_request_handle_time"],
+        )
+        self.assertEqual(
+            DEFAULT_INLINE_KEYS_COLUMNS, verified_bot_connection["inline_keys_columns"]
+        )
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_wrong_type_update_time_config(self, mock_load, mock_file_open):
+        """
+        Test if default values are still set if update_time has the wrong type in config.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return: None
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "telegrambot": {
+                "chat_id_source": "auto",
+                "update_time": "string",
+                "inline_keys_columns": 3,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(
+            DEFAULT_BOT_UPDATE_TIME, verified_bot_connection["bot_update_time"]
+        )
+        self.assertEqual(
+            DEFAULT_BOT_REQUEST_HANDLE_TIME,
+            verified_bot_connection["bot_request_handle_time"],
+        )
+        self.assertEqual(
+            DEFAULT_INLINE_KEYS_COLUMNS, verified_bot_connection["inline_keys_columns"]
+        )
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_small_num_update_time_config(self, mock_load, mock_file_open):
+        """
+        Test if default values are still set if update_time is too small to process.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return: None
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "telegrambot": {
+                "chat_id_source": "auto",
+                "update_time": 1,
+                "inline_keys_columns": 3,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(
+            DEFAULT_BOT_UPDATE_TIME, verified_bot_connection["bot_update_time"]
+        )
+        self.assertEqual(
+            DEFAULT_BOT_REQUEST_HANDLE_TIME,
+            verified_bot_connection["bot_request_handle_time"],
+        )
+        self.assertEqual(
+            DEFAULT_INLINE_KEYS_COLUMNS, verified_bot_connection["inline_keys_columns"]
+        )
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_ok_update_time_config(self, mock_load, mock_file_open):
+        """
+        Test if config for telegram bot is correct.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return: None
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "telegrambot": {
+                "chat_id_source": "auto",
+                "update_time": 5,
+                "inline_keys_columns": 3,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(5, verified_bot_connection["bot_update_time"])
+        self.assertEqual(2, verified_bot_connection["bot_request_handle_time"])
+        self.assertEqual(
+            DEFAULT_INLINE_KEYS_COLUMNS, verified_bot_connection["inline_keys_columns"]
+        )
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_no_keys_columns_config(self, mock_load, mock_file_open):
+        """
+        Test if default values are still set if keys_columns config is not available.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return: None
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "telegrambot": {
+                "chat_id_source": "auto",
+                "update_time": 5,
+                "not_inline_keys_columns": 3,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(5, verified_bot_connection["bot_update_time"])
+        self.assertEqual(2, verified_bot_connection["bot_request_handle_time"])
+        self.assertEqual(
+            DEFAULT_INLINE_KEYS_COLUMNS, verified_bot_connection["inline_keys_columns"]
+        )
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_wrong_type_keys_columns_config(self, mock_load, mock_file_open):
+        """
+        Test if default values are still set if keys_columns config has the wrong type.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return: None
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "telegrambot": {
+                "chat_id_source": "auto",
+                "update_time": 5,
+                "inline_keys_columns": 7.7,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(5, verified_bot_connection["bot_update_time"])
+        self.assertEqual(2, verified_bot_connection["bot_request_handle_time"])
+        self.assertEqual(
+            DEFAULT_INLINE_KEYS_COLUMNS, verified_bot_connection["inline_keys_columns"]
+        )
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_ok_keys_columns_config(self, mock_load, mock_file_open):
+        """
+        Test if config for keys_columns is correct.
+        :param mock_load: Return value with config
+        :param mock_file_open: Mock to open file
+        :return: None
+        """
+        _ = mock_file_open.return_value.__enter__.return_value
+        mock_load.return_value = {
+            "telegrambot": {
+                "chat_id_source": "auto",
+                "update_time": 5,
+                "inline_keys_columns": 7,
+            }
+        }
+
+        check_and_verify_bot_config()
+
+        self.assertEqual(5, verified_bot_connection["bot_update_time"])
+        self.assertEqual(2, verified_bot_connection["bot_request_handle_time"])
+        self.assertEqual(7, verified_bot_connection["inline_keys_columns"])
+
+
+if __name__ == "__main__":
     unittest.main()
