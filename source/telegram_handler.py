@@ -195,7 +195,7 @@ def check_and_verify_chat_id() -> None:
     :return: None
     """
     if os.path.exists(CHAT_ID_FILE_PATH):
-        with open(CHAT_ID_FILE_PATH, 'r') as datei:
+        with open(CHAT_ID_FILE_PATH, 'r', encoding="utf-8") as datei:
             chat_id = datei.read()
         if chat_id:
             verified_bot_connection["chat_id_value"] = chat_id
@@ -264,7 +264,8 @@ def check_and_verify_bot_connection() -> None:
     """
 
     check_and_verify_token()
-    if not verified_bot_connection["verified"]: return
+    if not verified_bot_connection["verified"]:
+        return
     check_and_verify_chat_id()
 
 

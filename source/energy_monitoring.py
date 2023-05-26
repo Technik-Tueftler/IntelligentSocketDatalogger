@@ -21,6 +21,9 @@ observed_devices = []
 
 @dataclass
 class Device:
+    """
+    A device that has been registered for monitoring
+    """
     name: str
     threshold_wh: int
     period_min: int
@@ -79,7 +82,6 @@ def handle_communication() -> None:
     while not com.to_energy_mon.empty():
         req = com.to_bot.get()
         if req.command == "set_alarm":
-            # ToDo: hier gehts weiter
             ...
 
 
@@ -88,7 +90,6 @@ def main() -> None:
     Scheduling function for regular call.
     :return: None
     """
-    pass
 
 
 if __name__ == "__main__":
