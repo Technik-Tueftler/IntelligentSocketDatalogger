@@ -12,6 +12,7 @@ from source import communication as com
 from source.constants import (
     CONFIGURATION_FILE_PATH,
     CHAT_ID_FILE_PATH,
+    TIMEOUT_RESPONSE_TIME,
     DEFAULT_INLINE_KEYS_COLUMNS,
     DEFAULT_BOT_UPDATE_TIME,
     DEFAULT_BOT_REQUEST_HANDLE_TIME,
@@ -86,7 +87,7 @@ def send_inline_keyboard_for_set_alarm(devices) -> None:
         "text": user_message,
         "reply_markup": {"inline_keyboard": inline_keyboard},
     }
-    _ = requests.post(url, json=payload)
+    _ = requests.post(url, json=payload, timeout=TIMEOUT_RESPONSE_TIME)
 
 
 def pull_messages() -> None:
@@ -141,7 +142,7 @@ def send_message(message: str) -> None:
     if not verified_bot_connection["verified"]:
         return
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}"
-    requests.get(url).json()
+    requests.get(url, timeout=TIMEOUT_RESPONSE_TIME).json()
 
 
 def check_exist_last_message(get_update_response: dict) -> int:
@@ -176,7 +177,7 @@ def check_and_verify_token() -> None:
     """
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-        token_check_response = requests.get(url).json()
+        token_check_response = requests.get(url, timeout=TIMEOUT_RESPONSE_TIME).json()
         if token_check_response["ok"]:
             verified_bot_connection["token"] = True
             verified_bot_connection["last_received_message"] = check_exist_last_message(
@@ -278,7 +279,7 @@ def get_updates() -> list:
     """
     messages = []
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    update = requests.get(url).json()
+    update = requests.get(url, timeout=TIMEOUT_RESPONSE_TIME).json()
     for result in update["result"]:
         if "message" in result:
             if (
@@ -323,7 +324,7 @@ def set_commands() -> None:
 
     payload = {"commands": commands}
 
-    _ = requests.post(url, json=payload)
+    _ = requests.post(url, timeout=TIMEOUT_RESPONSE_TIME, json=payload)
 
     # if response.status_code == 200:
     #     print("Commands set successfully.")

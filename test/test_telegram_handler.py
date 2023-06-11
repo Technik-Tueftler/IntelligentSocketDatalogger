@@ -3,17 +3,97 @@ Tests for telegram_handler.py
 """
 import unittest
 from unittest.mock import patch, mock_open
+from source.logging_helper import LoggingLevel
+from source.constants import CONFIGURATION_FILE_PATH, CHAT_ID_FILE_PATH
 from source.telegram_handler import (
     verified_bot_connection,
     check_and_verify_token,
     check_and_verify_chat_id,
     check_and_verify_bot_config,
+    start
 )
 from source.constants import (
     DEFAULT_BOT_UPDATE_TIME,
     DEFAULT_BOT_REQUEST_HANDLE_TIME,
     DEFAULT_INLINE_KEYS_COLUMNS,
 )
+
+
+class TestStart(unittest.TestCase):
+    """
+    Unit test for function start()
+    """
+
+    def setUp(self):
+        verified_bot_connection["chat_id_value"] = ""
+        verified_bot_connection["chat_id"] = False
+
+    @patch("builtins.open")
+    @patch("json.load")
+    @patch("source.logging_helper.write_log")
+    def test_no_configuration(self, mock_helper_write_log, mock_load, mock_file_open):
+        """
+        Test correct behaviour if the configuration is wrong or not available.
+        """
+        mock_load.return_value = {"not_telegrambot": {"chat_id_source": "auto"}}
+        mock_file = mock_file_open()
+        mock_file_open.return_value.__enter__.return_value = mock_file
+
+        start(1234)
+
+        # Asserting that the open function was called with the expected arguments from config
+        mock_file_open.assert_any_call(CONFIGURATION_FILE_PATH, encoding="utf-8")
+        mock_helper_write_log.assert_called_once_with(
+            LoggingLevel.ERROR.value,
+            "Configuration for Telegram-Bot is missing in config.json.",
+        )
+        self.assertEqual("", verified_bot_connection["chat_id_value"])
+        self.assertFalse(verified_bot_connection["chat_id"])
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_auto_configuration(self, mock_json_load, mock_file_open):
+        """
+        Test if file will be created in configuration "auto" is active for chat_id
+        """
+        chat_id = "123456"
+        mock_data = {"telegrambot": {"chat_id_source": "auto"}}
+        mock_json_load.return_value = mock_data
+
+        mock_file = mock_file_open()
+        mock_file_open.return_value.__enter__.return_value = mock_file
+
+        start(chat_id)
+
+        # Asserting that the open function was called with the expected arguments from config
+        mock_file_open.assert_any_call(CONFIGURATION_FILE_PATH, encoding="utf-8")
+        # Asserting that json.load was called with the file object returned by open
+        mock_json_load.assert_called_once_with(mock_file)
+        # Asserting that the open function was called with the expected arguments from config
+        mock_file_open.assert_any_call(CHAT_ID_FILE_PATH, "w", encoding="utf-8")
+        # Asserting that the write method was called on the file object returned by open
+        mock_file.write.assert_called_once_with(str(chat_id))
+
+        self.assertEqual(chat_id, verified_bot_connection["chat_id_value"])
+        self.assertTrue(verified_bot_connection["chat_id"])
+
+    @patch("builtins.open")
+    @patch("json.load")
+    def test_manuel_configuration(self, mock_json_load, mock_file_open):
+        """
+        Test correct behaviour if the configuration for chat_id is set to manuel
+        """
+        chat_id = "1234567"
+        mock_data = {"telegrambot": {"chat_id_source": "manuel"}}
+        mock_json_load.return_value = mock_data
+
+        mock_file = mock_file_open()
+        mock_file_open.return_value.__enter__.return_value = mock_file
+
+        start(chat_id)
+
+        self.assertEqual(chat_id, verified_bot_connection["chat_id_value"])
+        self.assertTrue(verified_bot_connection["chat_id"])
 
 
 class TestCheckAndVerifyToken(unittest.TestCase):
