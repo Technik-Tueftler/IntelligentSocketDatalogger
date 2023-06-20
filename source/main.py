@@ -75,9 +75,7 @@ def handle_communication() -> None:
     while not com.to_main.empty():
         req = com.to_main.get()
         if req.command == "status":
-            com.to_bot.put(
-                com.Response("status", {"output_text": "App is running"})
-            )
+            com.to_bot.put(com.Response("status", {"output_text": "App is running"}))
         elif req.command == "devices":
             return_string = "\n".join(started_devices)
             com.to_bot.put(com.Response("devices", {"output_text": return_string}))
@@ -135,7 +133,9 @@ def main() -> None:
             em.check_monitoring_requested(started_devices)
             for device in em.observed_devices:
                 schedule.every(device.period_min).minutes.do(em.run_monitoring, device)
-
+            schedule.every(
+                th.verified_bot_connection["bot_request_handle_time"]
+            ).seconds.do(em.handle_communication)
         while True:
             schedule.run_pending()
             time.sleep(1)

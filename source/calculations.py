@@ -209,8 +209,6 @@ def power_on_calc(
     :param current_timestamp: Now date and time from request
     :param time_difference: needed time difference for calculation
     :return: None
-
-    Test available
     """
     start_date = current_timestamp - time_difference
     start_date_format = start_date.strftime("%Y-%m-%d %H:%M:%S")

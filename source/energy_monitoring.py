@@ -13,6 +13,7 @@ from source.constants import (
     DEVICES_FILE_PATH,
     DEFAULT_ALARM_THRESHOLD_WH,
     DEFAULT_ALARM_PERIOD_MIN,
+    DEFAULT_REFERENCE_WH,
 )
 
 
@@ -24,16 +25,18 @@ class Device:
     """
     A device that has been registered for monitoring
     """
+
     name: str
+    reference_wh_last_period: int
     threshold_wh: int
     period_min: int
 
 
-def run_monitoring(device: Device) -> None:
+def get_device_energy_last_period(device: Device) -> float:
     """
-    Checks whether a device exceeds the limit values in the set time period
-    :param device: Device to be checked
-    :return: None
+    Calculate the energy of the device for the last period.
+    :param device: Device for which the calculation run
+    :return: Sum of energy of the device
     """
     current_timestamp = datetime.utcnow()
     start_date = current_timestamp - timedelta(minutes=device.period_min)
@@ -47,10 +50,44 @@ def run_monitoring(device: Device) -> None:
             "current_date": end_date_format,
         }
     )
-    energy_wh = sum(measurement["energy_wh"] for measurement in result.get_points())
+    return sum(
+        measurement["energy_wh"]
+        for measurement in result.get_points()
+        if measurement["fetch_success"]
+    )
+
+
+def write_device_monitoring_values(device: Device) -> None:
+    """
+    Function to write the reference value of the device in the configuration file
+    :param device: Device for which the update was requested
+    :return: None
+    """
+    energy_wh = get_device_energy_last_period(device)
+    device.reference_wh_last_period = energy_wh
+    with open(DEVICES_FILE_PATH, "r", encoding="utf-8") as json_file:
+        data = json.load(json_file)
+
+    data[device.name]["energy_alarm"]["reference_wh_last_period"] = energy_wh
+
+    with open(DEVICES_FILE_PATH, "w", encoding="utf-8") as json_file:
+        json.dump(data, json_file, indent=4)
+
+    message = f"Change threshold for {device.name} to value: {energy_wh}wh"
+    com.to_bot.put(com.Response("status", {"output_text": message}))
+
+
+def run_monitoring(device: Device) -> None:
+    """
+    Checks whether a device exceeds the limit values in the set time period
+    :param device: Device to be checked
+    :return: None
+    """
+    energy_wh = get_device_energy_last_period(device)
     if energy_wh >= Device.threshold_wh:
-        com.to_bot.put(com.Request(command="alarm_message",
-                                   data={"device_name": device.name}))
+        com.to_bot.put(
+            com.Request(command="alarm_message", data={"device_name": device.name})
+        )
 
 
 def check_monitoring_requested(started_devices: list) -> None:
@@ -69,8 +106,16 @@ def check_monitoring_requested(started_devices: list) -> None:
             continue
         thr_wh = device_energy_alarm.get("threshold_wh", DEFAULT_ALARM_THRESHOLD_WH)
         per_min = device_energy_alarm.get("period_min", DEFAULT_ALARM_PERIOD_MIN)
+        ref_wh = device_energy_alarm.get(
+            "reference_wh_last_period", DEFAULT_REFERENCE_WH
+        )
         observed_devices.append(
-            Device(name=device, threshold_wh=thr_wh, period_min=per_min)
+            Device(
+                name=device,
+                reference_wh_last_period=ref_wh,
+                threshold_wh=thr_wh,
+                period_min=per_min,
+            )
         )
 
 
@@ -80,9 +125,16 @@ def handle_communication() -> None:
     :return: None
     """
     while not com.to_energy_mon.empty():
-        req = com.to_bot.get()
+        req = com.to_energy_mon.get()
         if req.command == "set_alarm":
-            ...
+            device_name = req.data["device"]
+            device_for_changing = next(
+                filter(lambda device: device.name == device_name, observed_devices),
+                None,
+            )
+            if device_for_changing is None:
+                continue
+            write_device_monitoring_values(device_for_changing)
 
 
 def main() -> None:

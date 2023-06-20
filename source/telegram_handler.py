@@ -59,7 +59,7 @@ def start(chat_id: str) -> None:
     send_message("Bot is successfully set up.")
 
 
-def send_inline_keyboard_for_set_alarm(devices) -> None:
+def send_inline_keyboard_for_set_alarm(devices: list) -> None:
     """
     Function to create and send the inline keyboard to show all devices
     based on the adjustable display settings.
@@ -110,8 +110,11 @@ def pull_messages() -> None:
                 com.to_main.put(com.Request("setalarm"))
         elif isinstance(message, Callback):
             if message.action == "set_alarm":
-                com.to_energy_mon.put(com.Request(command="set_alarm",
-                                                  data={"device": message.data["device"]}))
+                com.to_energy_mon.put(
+                    com.Request(
+                        command="set_alarm", data={"device": message.value["device"]}
+                    )
+                )
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
 
@@ -128,8 +131,10 @@ def handle_communication() -> None:
         elif req.command == "setalarm":
             send_inline_keyboard_for_set_alarm(req.data["device_list"])
         elif req.command == "alarm_message":
-            message = f"The energy consumption of {req.data['device_name']} is unusually high. " \
-                      f"Please check if the device works correctly."
+            message = (
+                f"The energy consumption of {req.data['device_name']} is unusually high. "
+                f"Please check if the device works correctly."
+            )
             send_message(message)
 
 
@@ -161,9 +166,7 @@ def check_exist_last_message(get_update_response: dict) -> int:
         )
     else:
         last_message_id = (
-            get_update_response["result"][-1]["callback_query"]["message"][
-                "message_id"
-            ]
+            get_update_response["result"][-1]["callback_query"]["message"]["message_id"]
             if get_update_response["result"]
             else 0
         )
@@ -196,7 +199,7 @@ def check_and_verify_chat_id() -> None:
     :return: None
     """
     if os.path.exists(CHAT_ID_FILE_PATH):
-        with open(CHAT_ID_FILE_PATH, 'r', encoding="utf-8") as datei:
+        with open(CHAT_ID_FILE_PATH, "r", encoding="utf-8") as datei:
             chat_id = datei.read()
         if chat_id:
             verified_bot_connection["chat_id_value"] = chat_id
@@ -204,9 +207,11 @@ def check_and_verify_chat_id() -> None:
 
     if not verified_bot_connection["chat_id"]:
         if not CHAT_ID:
-            message = "It's currently not possible for the bot to write messages " \
-                      "because the CHAT_ID is still missing. Use the start command in the chat " \
-                      "or add the CHAT_ID to the env variables."
+            message = (
+                "It's currently not possible for the bot to write messages "
+                "because the CHAT_ID is still missing. Use the start command in the chat "
+                "or add the CHAT_ID to the env variables."
+            )
             lh.write_log(lh.LoggingLevel.ERROR.value, message)
         else:
             verified_bot_connection["chat_id_value"] = CHAT_ID
@@ -222,13 +227,17 @@ def check_and_verify_bot_config() -> None:
     with open(CONFIGURATION_FILE_PATH, encoding="utf-8") as file:
         data = json.load(file)
     if "telegrambot" not in data:
-        message = "Configuration for Telegram-Bot is missing in config.json, the default values " \
-                  "are now adopted"
+        message = (
+            "Configuration for Telegram-Bot is missing in config.json, the default values "
+            "are now adopted"
+        )
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
         return
     if "update_time" not in data["telegrambot"]:
-        message = f"The update time for Telegram-Bot is missing in config.json. The default " \
-                  f"value of {DEFAULT_BOT_UPDATE_TIME} is assumed."
+        message = (
+            f"The update time for Telegram-Bot is missing in config.json. The default "
+            f"value of {DEFAULT_BOT_UPDATE_TIME} is assumed."
+        )
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
         return
     try:
@@ -252,9 +261,7 @@ def check_and_verify_bot_config() -> None:
     if "inline_keys_columns" in data["telegrambot"]:
         value_inline_keys_columns = data["telegrambot"]["inline_keys_columns"]
         if isinstance(value_inline_keys_columns, int):
-            verified_bot_connection[
-                "inline_keys_columns"
-            ] = value_inline_keys_columns
+            verified_bot_connection["inline_keys_columns"] = value_inline_keys_columns
 
 
 def check_and_verify_bot_connection() -> None:
