@@ -6,5 +6,11 @@
     "calc_request_time_monthly": "01",
     "calc_request_time_yearly": "01.01",
     "price_kwh": 0.296
+  },
+  "telegrambot":
+  {
+    "chat_id_source": "auto",
+    "update_time": 10,
+    "inline_keys_columns": "foo"
   }
 }

@@ -22,7 +22,6 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
     """
     Class to structure all environment variables and verify them.
     """
-
     db_ip_address: str = os.getenv("DB_IP_ADDRESS")
     db_user_name: str = os.getenv("DB_USER_NAME")
     db_user_password: str = os.getenv("DB_USER_PASSWORD", "")
@@ -88,7 +87,12 @@ class InfluxDBConnection(InfluxDBClient):
 
 
 def check_and_verify_db_connection() -> None:
-    """Function controls the passed env variables and checks if they are valid."""
+    """
+    Function controls the passed env variables and checks if they are valid.
+    :return: None
+    """
+    if login_information.verified is False:
+        return
     try:
         with InfluxDBConnection() as connection:
             connection.ping()
@@ -115,8 +119,8 @@ def check_and_verify_db_connection() -> None:
 
 def write_device_information(file_name: str, data: dict) -> None:
     """
-
-    :param file_name:
+    Write all the requested information to external file.
+    :param file_name: Filename under which it should be saved
     :param data: information for logging
     :return:
     """

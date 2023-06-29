@@ -209,8 +209,6 @@ def power_on_calc(  # pylint: disable=too-many-locals
     :param current_timestamp: Now date and time from request
     :param time_difference: needed time difference for calculation
     :return: None
-
-    Test available
     """
     start_date = current_timestamp - time_difference
     start_date_format = start_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -231,7 +229,7 @@ def power_on_calc(  # pylint: disable=too-many-locals
     high_threshold_passed = False
     no_valid_data = True
     for value in values:
-        if not isinstance(value, int):
+        if value is None:
             continue
         if (value >= high_threshold) and not high_threshold_passed:
             high_threshold_passed = True

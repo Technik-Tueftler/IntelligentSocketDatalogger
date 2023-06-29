@@ -17,9 +17,13 @@ from source.supported_devices import plugins
 from source import support_functions
 from source import calculations as cc
 from source import logging_helper as lh
+from source import telegram_handler as th
+from source import communication as com
+from source import energy_monitoring as em
 from source.constants import DEVICES_FILE_PATH
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
+started_devices = []
 
 
 def fetch_device_data(settings: dict) -> None:
@@ -63,6 +67,24 @@ def write_data(device_data: list):
         )
 
 
+def handle_communication() -> None:
+    """
+    Communication routine function to handle all requests for the main function.
+    :return: None
+    """
+    while not com.to_main.empty():
+        req = com.to_main.get()
+        if req.command == "status":
+            com.to_bot.put(com.Response("status", {"output_text": "App is running"}))
+        elif req.command == "devices":
+            return_string = "\n".join(started_devices)
+            com.to_bot.put(com.Response("devices", {"output_text": return_string}))
+        elif req.command == "setalarm":
+            com.to_bot.put(
+                com.Response("setalarm", {"device_list": started_devices.copy()})
+            )
+
+
 def main() -> None:
     """
     Scheduling function for regular call.
@@ -83,6 +105,7 @@ def main() -> None:
                 schedule.every(settings["update_time"]).seconds.do(
                     fetch_device_data, device_settings
                 )
+                started_devices.append(device_name)
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
                 support_functions.validation_power_on_parameter(
@@ -95,7 +118,24 @@ def main() -> None:
                     settings | {"device_name": device_name},
                     calc_requested,
                 )
-
+        # Start Telegram-Bot and send message
+        th.check_and_verify_bot_connection()
+        if th.verified_bot_connection["verified"]:
+            th.set_commands()
+            schedule.every(th.verified_bot_connection["bot_update_time"]).seconds.do(
+                th.schedule_bot
+            )
+            schedule.every(
+                th.verified_bot_connection["bot_request_handle_time"]
+            ).seconds.do(handle_communication)
+            th.send_message(message)
+            # Start energy monitoring for each device
+            em.check_monitoring_requested(started_devices)
+            for device in em.observed_devices:
+                schedule.every(device.period_min).minutes.do(em.run_monitoring, device)
+            schedule.every(
+                th.verified_bot_connection["bot_request_handle_time"]
+            ).seconds.do(em.handle_communication)
         while True:
             schedule.run_pending()
             time.sleep(1)
@@ -110,7 +150,7 @@ def main() -> None:
 if __name__ == "__main__":
     timestamp_now = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S")
     message = f"Start Program: {timestamp_now} UTC"
-    lh.write_log(lh.LoggingLevel.INFO.value, message)
     support_functions.check_and_verify_db_connection()
     if support_functions.login_information.verified is not False:
+        lh.write_log(lh.LoggingLevel.INFO.value, message)
         main()
