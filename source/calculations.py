@@ -196,7 +196,7 @@ def cost_calc(
     data["error_rate_two"] = (max_values - len(success_measurements)) * 100 / max_values
 
 
-def power_on_calc(
+def power_on_calc(  # pylint: disable=too-many-locals
     settings: dict,
     data: dict,
     current_timestamp: datetime,
@@ -227,6 +227,7 @@ def power_on_calc(
     high_threshold = settings["power_on_counter"]["on_threshold"]
     low_threshold = settings["power_on_counter"]["off_threshold"]
     high_threshold_passed = False
+    no_valid_data = True
     for value in values:
         if value is None:
             continue
@@ -235,7 +236,16 @@ def power_on_calc(
         elif (value < low_threshold) and high_threshold_passed:
             counter += 1
             high_threshold_passed = False
+        no_valid_data = False
     data["power_on"] = counter
+    data["start_date"] = start_date_format
+    data["end_date"] = end_date_format
+    if no_valid_data:
+        error_message = (
+            f"For {settings['device_name']} no data available between "
+            f"{start_date_format} - {end_date_format}"
+        )
+        lh.write_log(lh.LoggingLevel.WARNING.value, error_message)
 
 
 def last_day_of_month(date) -> datetime:

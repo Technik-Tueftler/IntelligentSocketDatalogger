@@ -16,6 +16,10 @@ Via a plugin concept, you can include any socket by writing your own handler and
 - Shelly Plug S (type name: shelly:plug-s)  
 - Shelly 3EM (type name: shelly:3em)  
 
+## Additional functions
+`Cost calculation:` Writes the total work in KWh for the required period and calculates the total cost.  
+`Power on counter:` Counts how often a device switches on for the required time period.  
+
 ## Installation and execution
 1. Locally the program runs by executing the `main.py`. Currently, care must still be taken to load the environment variables into the IDE or environment. To do this, simply copy the repository and run main.py. The program was tested and developed under Python 3.10.
 2. Via a Docker container. See documentation: <https://hub.docker.com/r/techniktueftler/intelligent_socket_datalogger>. Example for a docker compose file you can see below.
@@ -46,7 +50,7 @@ Via a plugin concept, you can include any socket by writing your own handler and
 | is_valid_a _b _c     | Boolean | Returned values are ok on module A, B or C of the Shelly 3EM    |     -     |
 | power_a _b _c        |  Float  | Current power on module A, B or C of the Shelly 3EM             |   Watt    |
 | power_factor_a _b _c |  Float  | Power factor on module A, B or C of the Shelly 3EM              |   Watt    |
-| voltage_a _b _c      |  Float  | Voltage on module A, B or C of the Shelly 3EM                   |  lambda   |
+| voltage_a _b _c      |  Float  | Voltage on module A, B or C of the Shelly 3EM                   |   Volt    |
 
 ## Configuration files
 In order to adapt the project to the own conceptions, two configuration files are available. Furthermore there are automatically created files, which depend on an error or the setting of the project.
@@ -63,14 +67,18 @@ In order to adapt the project to the own conceptions, two configuration files ar
   "general":
   {
     "log_level": "info",
-    "cost_calc_request_time": "00:00",
+    "calc_request_time_daily": "00:00",
+    "calc_request_time_monthly": "01",
+    "calc_request_time_yearly": "01.01",
     "price_kwh": 0.296
   }
 }
 ````
 `log_level:` Logging level for the project. Possible settings: *debug, info, warning, error, critical*.  
-`cost_calc_request_time:` Specify the time when the cost calculation will start. This parameter is valid for all calculations. The default time is 00:00.  
-`price_kwh:` Indicates the price per kilowatt-hour. The default price is 0.30€.
+`calc_request_time_daily:` Specify the time at which the set reports are started daily. This parameter applies to all evaluations. The default time is 00:00.  
+`calc_request_time_monthly:` Specifies the day in the month on which the set reports are to be started monthly. The default setting is the first of the month.  
+`calc_request_time_yearly:` Specifies the day and month in the year on which the set reports are to be started annually. The default setting is 01.01.  
+`price_kwh:` Indicates the price per kilowatt-hour. The default price is 0.30€.  
 
 ### devices.json
 ````commandline 
@@ -81,24 +89,45 @@ In order to adapt the project to the own conceptions, two configuration files ar
     "ip": "192.168.178.200",
     "update_time": 10,
     "cost_calc_month": "01",
-    "cost_calc_year": "01.01"
-  },
-  "Herd":
-  {
-    "type": "shelly:3em",
-    "ip": "192.168.178.201",
-    "update_time": 30,
-    "cost_calc_day": true
+    "cost_calculation":
+    {
+      "daily": true,
+      "monthly": true,
+      "yearly": true
+    },
+    "power_on_counter":
+    {
+      "daily": false,
+      "monthly": true,
+      "yearly": false,
+      "on_threshold": 2,
+      "off_threshold": 1
+    }
   }
 }
 ````
 `washing machine:` Device name, which is recorded.  
+`type:` The type of intelligent socket. Currently, only __shelly:plug-s__ and __shelly:3em__ are supported by default.
 `ip:` IP address in the connected network  
 `update_time:` Update time at which interval new data should be requested. Specification is in __seconds__.  
-`type:` The type of intelligent socket. Currently, only __shelly:plug-s__ and __shelly:3em__ are supported by default.
 `cost_day:` Enables the feature that once a day the total costs and work of the device for the last 24 hours are stored. The time is set in __config.json__ with the parameter __cost_calc_request_time__. 
 `cost_calc_month:` Activates the feature that once a month the total costs and the work of the device are calculated. The execution day in the month is set here.  
 `cost_calc_year:` Activates the feature that once a year the total costs and the work of the device are calculated. The execution day and month are set here.
+
+#### Cost calculation (cost_calculation)
+With this function you can define whether you want to have a daily, monthly and yearly report. The options `daily`, `monthly` and `yearly` are each assigned `true` for active or `false` for inactive.  
+
+#### Power on counter (power_on_counter)
+This function counts how often a device switches on during the day, month and year. The options `daily`, `monthly` and `yearly` are each assigned `true` for active or `false` for inactive.  
+`on_threshold:` The value in Watt that must be exceeded for a **switch-on** to be detected.  
+`off_threshold:` The value in Watt that must be undershot for a **switch-off** to be detected.
+
+```mermaid
+graph LR
+B((Aus))
+B-->|größer on_threshold|C((An))
+C-->|kleiner off_threshold|B
+```
 
 ### ISDL Config Editor
 For a simple creating of the configuration files, there is under [ISDL Config Editor](https://isdledit.jojojux.de/editor) a graphic user interface. Here can be set over a input window e.g. the price/kWh and downloaded at the end the ready formatted configuration file. Also all sockets can be added individually with the necessary settings. This facilitates the setting and prevents formatting mistakes.
