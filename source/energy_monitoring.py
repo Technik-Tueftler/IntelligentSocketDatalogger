@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 from source import communication as com
 import source.support_functions as sf
+import source.logging_helper as lh
 from source.constants import (
     DEVICES_FILE_PATH,
     DEFAULT_ALARM_THRESHOLD_WH,
@@ -50,10 +51,13 @@ def get_device_energy_last_period(device: Device) -> float:
             "current_date": end_date_format,
         }
     )
-    return sum(
-        measurement["energy_wh"]
-        for measurement in result.get_points()
-        if measurement["fetch_success"]
+    return round(
+        sum(
+            measurement["energy_wh"]
+            for measurement in result.get_points()
+            if measurement["fetch_success"]
+        ),
+        2,
     )
 
 
@@ -84,10 +88,16 @@ def run_monitoring(device: Device) -> None:
     :return: None
     """
     energy_wh = get_device_energy_last_period(device)
-    if energy_wh >= Device.threshold_wh:
+
+    log_message = f"EM: {device.name} / {energy_wh} >= {device.threshold_wh}"
+    lh.write_log(lh.LoggingLevel.INFO.value, log_message)
+
+    if energy_wh >= device.threshold_wh:
         com.to_bot.put(
             com.Request(command="alarm_message", data={"device_name": device.name})
         )
+        log_message = f"Energy consumption of {device.name} is unusually high."
+        lh.write_log(lh.LoggingLevel.WARNING.value, log_message)
 
 
 def check_monitoring_requested(started_devices: list) -> None:

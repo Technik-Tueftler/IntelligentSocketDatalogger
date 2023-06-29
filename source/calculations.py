@@ -228,6 +228,8 @@ def power_on_calc(
     low_threshold = settings["power_on_counter"]["off_threshold"]
     high_threshold_passed = False
     for value in values:
+        if value is None:
+            continue
         if (value >= high_threshold) and not high_threshold_passed:
             high_threshold_passed = True
         elif (value < low_threshold) and high_threshold_passed:
@@ -406,7 +408,7 @@ def calculation_handler(
                 power_on_calc(
                     settings, data, current_timestamp, relativedelta(months=1)
                 )
-        sf.write_device_information(settings["device_name"] + "_month", data)
+            sf.write_device_information(settings["device_name"] + "_month", data)
 
     if calc_requested["cost_calc"][2] or calc_requested["power_on_counter"][2]:
         data = {key: "Not req" for key in data}
@@ -422,7 +424,7 @@ def calculation_handler(
                 cost_calc(settings, data, current_timestamp, relativedelta(years=1))
             if calc_requested["power_on_counter"][2]:
                 power_on_calc(settings, data, current_timestamp, relativedelta(years=1))
-        sf.write_device_information(settings["device_name"] + "_year", data)
+            sf.write_device_information(settings["device_name"] + "_year", data)
 
 
 def main() -> None:
