@@ -25,6 +25,8 @@ CHAT_ID = os.getenv("TB_CHAT_ID", "")
 Message = namedtuple("Message", ["chat_id", "message_id", "text"])
 Callback = namedtuple("Callback", ["message_id", "action", "value"])
 
+telegrambot_watcher = lh.WatchHen(device_name="Telegram-Bot")
+
 verified_bot_connection = {
     "verified": True,
     "token": False,
@@ -87,7 +89,15 @@ def send_inline_keyboard_for_set_alarm(devices: list) -> None:
         "text": user_message,
         "reply_markup": {"inline_keyboard": inline_keyboard},
     }
-    _ = requests.post(url, json=payload, timeout=TIMEOUT_RESPONSE_TIME)
+    try:
+        _ = requests.post(url, json=payload, timeout=TIMEOUT_RESPONSE_TIME)
+
+    except requests.exceptions.ConnectTimeout as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- Connection to telegram api timed out during send inline.",
+        )
 
 
 def pull_messages() -> None:
@@ -144,10 +154,18 @@ def send_message(message: str) -> None:
     :param message: Transmitted message which is to be written by the bot to the chat
     :return: None
     """
-    if not verified_bot_connection["verified"]:
-        return
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}"
-    requests.get(url, timeout=TIMEOUT_RESPONSE_TIME).json()
+    try:
+        if not verified_bot_connection["verified"]:
+            return
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}"
+        requests.get(url, timeout=TIMEOUT_RESPONSE_TIME).json()
+
+    except requests.exceptions.ConnectTimeout as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- Connection to telegram api timed out during send message.",
+        )
 
 
 def check_exist_last_message(get_update_response: dict) -> int:
@@ -191,6 +209,12 @@ def check_and_verify_token() -> None:
     except ValueError as err:
         verified_bot_connection["verified"] = False
         lh.write_log(lh.LoggingLevel.ERROR.value, err)
+    except requests.exceptions.ConnectTimeout as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- Connection to telegram api timed out during verification.",
+        )
 
 
 def check_and_verify_chat_id() -> None:
@@ -284,35 +308,47 @@ def get_updates() -> list:
     from the user or into callbacks from inline forms.
     :return: List with all not handled messages.
     """
-    messages = []
-    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    update = requests.get(url, timeout=TIMEOUT_RESPONSE_TIME).json()
-    for result in update["result"]:
-        if "message" in result:
-            if (
-                result["message"]["message_id"]
-                > verified_bot_connection["last_received_message"]
-            ):
-                messages.append(
-                    Message(
-                        chat_id=result["message"]["chat"]["id"],
-                        message_id=result["message"]["message_id"],
-                        text=result["message"]["text"],
+    try:
+        messages = []
+        url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+        update = requests.get(url, timeout=TIMEOUT_RESPONSE_TIME).json()
+        for result in update["result"]:
+            if "message" in result:
+                if (
+                    result["message"]["message_id"]
+                    > verified_bot_connection["last_received_message"]
+                ):
+                    messages.append(
+                        Message(
+                            chat_id=result["message"]["chat"]["id"],
+                            message_id=result["message"]["message_id"],
+                            text=result["message"]["text"],
+                        )
                     )
-                )
-        elif "callback_query" in result:
-            if (
-                result["callback_query"]["message"]["message_id"]
-                > verified_bot_connection["last_received_message"]
-            ):
-                messages.append(
-                    Callback(
-                        message_id=result["callback_query"]["message"]["message_id"],
-                        action=json.loads(result["callback_query"]["data"])["action"],
-                        value=json.loads(result["callback_query"]["data"]),
+            elif "callback_query" in result:
+                if (
+                    result["callback_query"]["message"]["message_id"]
+                    > verified_bot_connection["last_received_message"]
+                ):
+                    messages.append(
+                        Callback(
+                            message_id=result["callback_query"]["message"][
+                                "message_id"
+                            ],
+                            action=json.loads(result["callback_query"]["data"])[
+                                "action"
+                            ],
+                            value=json.loads(result["callback_query"]["data"]),
+                        )
                     )
-                )
-    return messages
+        return messages
+    except requests.exceptions.ConnectTimeout as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- Connection to telegram api timed out during update.",
+        )
+        return messages
 
 
 def set_commands() -> None:
@@ -330,9 +366,15 @@ def set_commands() -> None:
     ]
 
     payload = {"commands": commands}
+    try:
+        _ = requests.post(url, timeout=TIMEOUT_RESPONSE_TIME, json=payload)
 
-    _ = requests.post(url, timeout=TIMEOUT_RESPONSE_TIME, json=payload)
-
+    except requests.exceptions.ConnectTimeout as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- Connection to telegram api timed out during send commands.",
+        )
     # if response.status_code == 200:
     #     print("Commands set successfully.")
     # else:
