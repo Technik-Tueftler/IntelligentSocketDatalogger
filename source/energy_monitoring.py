@@ -89,9 +89,6 @@ def run_monitoring(device: Device) -> None:
     """
     energy_wh = get_device_energy_last_period(device)
 
-    log_message = f"EM: {device.name} / {energy_wh} >= {device.threshold_wh}"
-    lh.write_log(lh.LoggingLevel.INFO.value, log_message)
-
     if energy_wh >= device.threshold_wh:
         com.to_bot.put(
             com.Request(command="alarm_message", data={"device_name": device.name})

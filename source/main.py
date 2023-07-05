@@ -81,7 +81,7 @@ def handle_communication() -> None:
             com.to_bot.put(com.Response("devices", {"output_text": return_string}))
         elif req.command == "setalarm":
             com.to_bot.put(
-                com.Response("setalarm", {"device_list": started_devices.copy()})
+                com.Response("setalarm", {"device_list": em.observed_devices.copy()})
             )
 
 
