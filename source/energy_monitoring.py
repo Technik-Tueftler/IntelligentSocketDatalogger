@@ -133,7 +133,7 @@ def handle_communication() -> None:
     """
     while not com.to_energy_mon.empty():
         req = com.to_energy_mon.get()
-        if req.command == "set_alarm":
+        if req.command == "showalarmref":
             device_name = req.data["device"]
             device_for_changing = next(
                 filter(lambda device: device.name == device_name, observed_devices),

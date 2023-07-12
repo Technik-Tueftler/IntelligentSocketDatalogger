@@ -5,6 +5,7 @@ All functions to operate the features for the telegram bot.
 """
 import os
 import json
+import re
 from collections import namedtuple
 import requests
 from source import logging_helper as lh
@@ -17,6 +18,7 @@ from source.constants import (
     DEFAULT_BOT_UPDATE_TIME,
     DEFAULT_BOT_REQUEST_HANDLE_TIME,
     USER_MESSAGE_INLINE_KEYBOARD_SET_ALARM,
+    NUM_IS_INT_OR_FLOAT_MATCH
 )
 
 TOKEN = os.getenv("TB_TOKEN", "")
@@ -26,6 +28,8 @@ Message = namedtuple("Message", ["chat_id", "message_id", "text"])
 Callback = namedtuple("Callback", ["message_id", "action", "value"])
 
 telegrambot_watcher = lh.WatchHen(device_name="Telegram-Bot")
+
+open_requests = {"value_setalarmthr": None}
 
 verified_bot_connection = {
     "verified": True,
@@ -61,24 +65,25 @@ def start(chat_id: str) -> None:
     send_message("Bot is successfully set up.")
 
 
-def send_inline_keyboard_for_set_alarm(devices: list) -> None:
+def send_inline_keyboard_for_set_alarm(command, devices: list) -> None:
     """
     Function to create and send the inline keyboard to show all devices
     based on the adjustable display settings.
-    :param devices:
+    :param command: Requested command from user
+    :param devices: All configured devices for energy monitor
     :return:
     """
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     inline_keyboard = []
     while devices:
         temp_list = []
-        for _ in range(0, verified_bot_connection["inline_keys_columns"]):
+        for _ in range(verified_bot_connection["inline_keys_columns"]):
             if not devices:
                 break
             device = devices.pop()
             temp_dict = {
                 "text": device,
-                "callback_data": json.dumps({"action": "set_alarm", "device": device}),
+                "callback_data": json.dumps({"action": command, "device": device}),
             }
             temp_list.append(temp_dict)
         inline_keyboard.append(temp_list)
@@ -110,21 +115,43 @@ def pull_messages() -> None:
         return
     for message in messages:
         if isinstance(message, Message):
-            if message.text.lower().strip() == "/start":
-                start(message.chat_id)
-            elif message.text.lower().strip() == "/status":
-                com.to_main.put(com.Request("status"))
-            elif message.text.lower().strip() == "/devices":
-                com.to_main.put(com.Request("devices"))
-            elif message.text.lower().strip() == "/setalarm":
-                com.to_main.put(com.Request("setalarm"))
+            match message.text.lower().strip():
+                case "/start":
+                    start(message.chat_id)
+                case "/status":
+                    com.to_main.put(com.Request("status"))
+                case "/devices":
+                    com.to_main.put(com.Request("devices"))
+                case "/showalarmref":
+                    com.to_main.put(com.Request("showalarmref"))
+                case "/setalarmthr":
+                    com.to_main.put(com.Request("setalarmthr"))
+                case msg if open_requests["value_setalarmthr"] is not None:
+                    match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, msg)
+                    if match is None:
+                        device = open_requests["value_setalarmthr"]
+                        user_message = f"Invalid Number format to set threshold of device {device} to. You will have to run /setalarmthr again to retry."
+                        send_message(user_message)
+                        open_requests["value_setalarmthr"] = None
+                    else:
+
+
+
+
         elif isinstance(message, Callback):
-            if message.action == "set_alarm":
-                com.to_energy_mon.put(
-                    com.Request(
-                        command="set_alarm", data={"device": message.value["device"]}
+            match message.action:
+                case "showalarmref":
+                    com.to_energy_mon.put(
+                        com.Request(
+                            command="showalarmref", data={"device": message.value["device"]}
+                        )
                     )
-                )
+                case "setalarmthr":
+                    device = message.value["device"]
+                    open_requests["value_setalarmthr"] = device
+                    user_message = f"Write the threshold for device {device} as an float (e.g. 50.0)"
+                    send_message(user_message)
+
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
 
@@ -136,16 +163,17 @@ def handle_communication() -> None:
     """
     while not com.to_bot.empty():
         req = com.to_bot.get()
-        if req.command in ["status", "devices"]:
-            send_message(req.data["output_text"])
-        elif req.command == "setalarm":
-            send_inline_keyboard_for_set_alarm(req.data["device_list"])
-        elif req.command == "alarm_message":
-            message = (
-                f"The energy consumption of {req.data['device_name']} is unusually high. "
-                f"Please check if the device works correctly."
-            )
-            send_message(message)
+        match req.command:
+            case["status", "devices"]:
+                send_message(req.data["output_text"])
+            case["showalarmref" | "setalarmthr"]:
+                send_inline_keyboard_for_set_alarm(req.command, req.data["device_list"])
+            case "alarm_message":
+                message = (
+                    f"The energy consumption of {req.data['device_name']} is unusually high. "
+                    f"Please check if the device works correctly."
+                )
+                send_message(message)
 
 
 def send_message(message: str) -> None:
@@ -362,7 +390,11 @@ def set_commands() -> None:
         {"command": "/start", "description": "Initialization off the app"},
         {"command": "/status", "description": "Get current status of ISDL"},
         {"command": "/devices", "description": "Get all running devices"},
-        {"command": "/setalarm", "description": "Set power alarm for devices"},
+        {"command": "/setalarmthr", "description": "Set threshold for power alarm"},
+        {
+            "command": "/showalarmref",
+            "description": "Show reference value from last period",
+        },
     ]
 
     payload = {"commands": commands}

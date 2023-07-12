@@ -74,16 +74,20 @@ def handle_communication() -> None:
     """
     while not com.to_main.empty():
         req = com.to_main.get()
-        if req.command == "status":
-            com.to_bot.put(com.Response("status", {"output_text": "App is running"}))
-        elif req.command == "devices":
-            return_string = "\n".join(started_devices)
-            com.to_bot.put(com.Response("devices", {"output_text": return_string}))
-        elif req.command == "setalarm":
-            com.to_bot.put(
-                com.Response("setalarm", {"device_list": em.observed_devices.copy()})
-            )
-
+        match req.command:
+            case "status":
+                com.to_bot.put(
+                    com.Response("status", {"output_text": "App is running"})
+                )
+            case "devices":
+                return_string = "\n".join(started_devices)
+                com.to_bot.put(com.Response("devices", {"output_text": return_string}))
+            case["showalarmref" | "setalarmthr"]:
+                com.to_bot.put(
+                    com.Response(
+                        req.command, {"device_list": em.observed_devices.copy()}
+                    )
+                )
 
 def main() -> None:
     """
@@ -102,9 +106,9 @@ def main() -> None:
                     "device_name": device_name,
                     "watch_hen": lh.WatchHen(device_name=device_name),
                 }
-                schedule.every(settings["update_time"]).seconds.do(
-                    fetch_device_data, device_settings
-                )
+                # schedule.every(settings["update_time"]).seconds.do(
+                #    fetch_device_data, device_settings
+                # )
                 started_devices.append(device_name)
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
