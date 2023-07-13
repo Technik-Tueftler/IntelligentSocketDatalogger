@@ -18,7 +18,7 @@ from source.constants import (
     DEFAULT_BOT_UPDATE_TIME,
     DEFAULT_BOT_REQUEST_HANDLE_TIME,
     USER_MESSAGE_INLINE_KEYBOARD_SET_ALARM,
-    NUM_IS_INT_OR_FLOAT_MATCH
+    NUM_IS_INT_OR_FLOAT_MATCH,
 )
 
 TOKEN = os.getenv("TB_TOKEN", "")
@@ -82,8 +82,8 @@ def send_inline_keyboard_for_set_alarm(command, devices: list) -> None:
                 break
             device = devices.pop()
             temp_dict = {
-                "text": device,
-                "callback_data": json.dumps({"action": command, "device": device}),
+                "text": device.name,
+                "callback_data": json.dumps({"action": command, "device": device.name}),
             }
             temp_list.append(temp_dict)
         inline_keyboard.append(temp_list)
@@ -122,34 +122,41 @@ def pull_messages() -> None:
                     com.to_main.put(com.Request("status"))
                 case "/devices":
                     com.to_main.put(com.Request("devices"))
-                case "/showalarmref":
-                    com.to_main.put(com.Request("showalarmref"))
+                case "/setalarmref":
+                    com.to_main.put(com.Request("setalarmref"))
                 case "/setalarmthr":
                     com.to_main.put(com.Request("setalarmthr"))
                 case msg if open_requests["value_setalarmthr"] is not None:
                     match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, msg)
+                    device = open_requests["value_setalarmthr"]
                     if match is None:
-                        device = open_requests["value_setalarmthr"]
-                        user_message = f"Invalid Number format to set threshold of device {device} to. You will have to run /setalarmthr again to retry."
+                        user_message = f"Invalid Number format to set threshold of device " \
+                                       f"{device} to. You will have to run /setalarmthr again " \
+                                       f"to retry."
                         send_message(user_message)
                         open_requests["value_setalarmthr"] = None
                     else:
-
-
-
-
+                        com.to_energy_mon.put(
+                            com.Request(
+                                command="setalarmthr",
+                                data={"device": device, "threshold": match.group()},
+                            )
+                        )
+                        open_requests["value_setalarmthr"] = None
         elif isinstance(message, Callback):
             match message.action:
-                case "showalarmref":
+                case "setalarmref":
                     com.to_energy_mon.put(
                         com.Request(
-                            command="showalarmref", data={"device": message.value["device"]}
+                            command="showalarmref",
+                            data={"device": message.value["device"]},
                         )
                     )
                 case "setalarmthr":
                     device = message.value["device"]
                     open_requests["value_setalarmthr"] = device
-                    user_message = f"Write the threshold for device {device} as an float (e.g. 50.0)"
+                    user_message = f"Write the threshold for device {device} " \
+                                   f"as an float (e.g. 50.0)"
                     send_message(user_message)
 
         if message.message_id > verified_bot_connection["last_received_message"]:
@@ -164,9 +171,9 @@ def handle_communication() -> None:
     while not com.to_bot.empty():
         req = com.to_bot.get()
         match req.command:
-            case["status", "devices"]:
+            case "status" | "devices":
                 send_message(req.data["output_text"])
-            case["showalarmref" | "setalarmthr"]:
+            case "setalarmref" | "setalarmthr":
                 send_inline_keyboard_for_set_alarm(req.command, req.data["device_list"])
             case "alarm_message":
                 message = (
@@ -377,6 +384,13 @@ def get_updates() -> list:
             "- Connection to telegram api timed out during update.",
         )
         return messages
+    except requests.exceptions.ConnectionError as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- Connection to telegram api generates an error.",
+        )
+        return messages
 
 
 def set_commands() -> None:
@@ -392,8 +406,8 @@ def set_commands() -> None:
         {"command": "/devices", "description": "Get all running devices"},
         {"command": "/setalarmthr", "description": "Set threshold for power alarm"},
         {
-            "command": "/showalarmref",
-            "description": "Show reference value from last period",
+            "command": "/setalarmref",
+            "description": "Set reference value of energy from last period",
         },
     ]
 
@@ -407,6 +421,7 @@ def set_commands() -> None:
             err,
             "- Connection to telegram api timed out during send commands.",
         )
+    # if response.status_code == 200:
     # if response.status_code == 200:
     #     print("Commands set successfully.")
     # else:

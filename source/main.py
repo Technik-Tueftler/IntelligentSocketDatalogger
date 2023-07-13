@@ -82,12 +82,13 @@ def handle_communication() -> None:
             case "devices":
                 return_string = "\n".join(started_devices)
                 com.to_bot.put(com.Response("devices", {"output_text": return_string}))
-            case["showalarmref" | "setalarmthr"]:
+            case "setalarmref" | "setalarmthr":
                 com.to_bot.put(
                     com.Response(
                         req.command, {"device_list": em.observed_devices.copy()}
                     )
                 )
+
 
 def main() -> None:
     """
@@ -106,9 +107,9 @@ def main() -> None:
                     "device_name": device_name,
                     "watch_hen": lh.WatchHen(device_name=device_name),
                 }
-                # schedule.every(settings["update_time"]).seconds.do(
-                #    fetch_device_data, device_settings
-                # )
+                schedule.every(settings["update_time"]).seconds.do(
+                   fetch_device_data, device_settings
+                )
                 started_devices.append(device_name)
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
