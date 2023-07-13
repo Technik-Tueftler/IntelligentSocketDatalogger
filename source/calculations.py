@@ -7,6 +7,7 @@ in Daily, monthly, and yearly rhythm.
 import re
 import json
 from datetime import datetime, timedelta
+import influxdb.resultset
 from dateutil.relativedelta import relativedelta
 
 from source.constants import (
@@ -141,6 +142,7 @@ def cost_calc(
     data: dict,
     current_timestamp: datetime,
     time_difference: relativedelta,
+    db_fetch: influxdb.resultset.ResultSet,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -148,6 +150,7 @@ def cost_calc(
     :param data: data structure for writing in file
     :param current_timestamp: Now date and time from request
     :param time_difference: needed time difference for calculation
+    :param db_fetch: Result set from device
     :return: None
     """
     start_date = current_timestamp - time_difference
@@ -155,24 +158,16 @@ def cost_calc(
     end_date = current_timestamp
     end_date_format = end_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    result = sf.fetch_measurements(
-        {
-            "device": settings["device_name"],
-            "target_date": start_date_format,
-            "current_date": end_date_format,
-        }
-    )
-
     success_measurements = list(
         filter(
             lambda measurement: measurement["fetch_success"] is True,
-            result.get_points(),
+            db_fetch.get_points(),
         )
     )
     failed_measurements = list(
         filter(
             lambda measurement: measurement["fetch_success"] is False,
-            result.get_points(),
+            db_fetch.get_points(),
         )
     )
     sum_of_energy_in_kwh = round(
@@ -201,6 +196,7 @@ def power_on_calc(  # pylint: disable=too-many-locals
     data: dict,
     current_timestamp: datetime,
     time_difference: relativedelta,
+    db_fetch: influxdb.resultset.ResultSet,
 ) -> None:
     """
     Calculate the monthly cost for a specific device.
@@ -208,6 +204,7 @@ def power_on_calc(  # pylint: disable=too-many-locals
     :param data: data structure for writing in file
     :param current_timestamp: Now date and time from request
     :param time_difference: needed time difference for calculation
+    :param db_fetch: Result set from device
     :return: None
     """
     start_date = current_timestamp - time_difference
@@ -215,14 +212,7 @@ def power_on_calc(  # pylint: disable=too-many-locals
     end_date = current_timestamp
     end_date_format = end_date.strftime("%Y-%m-%d %H:%M:%S")
 
-    result = sf.fetch_measurements(
-        {
-            "device": settings["device_name"],
-            "target_date": start_date_format,
-            "current_date": end_date_format,
-        }
-    )
-    values = [element["power"] for element in result.get_points()]
+    values = [element["power"] for element in db_fetch.get_points()]
     counter = 0
     high_threshold = settings["power_on_counter"]["on_threshold"]
     low_threshold = settings["power_on_counter"]["off_threshold"]
@@ -374,6 +364,31 @@ def check_matched_day_and_month(
     return False
 
 
+def fetch_device_data_for_calculation(
+    settings: dict, current_timestamp: datetime, time_difference: relativedelta
+) -> influxdb.resultset.ResultSet:
+    """
+    Fetch the device date from requested time delta.
+    :param settings: device parameters
+    :param current_timestamp: Now date and time from request
+    :param time_difference: needed time difference for calculation
+    :return: Result set from device
+    """
+    start_date = current_timestamp - time_difference
+    start_date_format = start_date.strftime("%Y-%m-%d %H:%M:%S")
+    end_date = current_timestamp
+    end_date_format = end_date.strftime("%Y-%m-%d %H:%M:%S")
+
+    result = sf.fetch_measurements(
+        {
+            "device": settings["device_name"],
+            "target_date": start_date_format,
+            "current_date": end_date_format,
+        }
+    )
+    return result
+
+
 def calculation_handler(
     settings: dict,
     calc_requested: dict,
@@ -395,10 +410,14 @@ def calculation_handler(
         "power_on": "Not req",
     }
     current_timestamp = datetime.utcnow()
+    if calc_requested["cost_calc"][0] or calc_requested["power_on_counter"][0]:
+        result = fetch_device_data_for_calculation(
+            settings, current_timestamp, relativedelta(days=1)
+        )
     if calc_requested["cost_calc"][0]:
-        cost_calc(settings, data, current_timestamp, relativedelta(days=1))
+        cost_calc(settings, data, current_timestamp, relativedelta(days=1), result)
     if calc_requested["power_on_counter"][0]:
-        power_on_calc(settings, data, current_timestamp, relativedelta(days=1))
+        power_on_calc(settings, data, current_timestamp, relativedelta(days=1), result)
 
     if calc_requested["cost_calc"][0] or calc_requested["power_on_counter"][0]:
         sf.write_device_information(settings["device_name"] + "_day", data)
@@ -407,16 +426,16 @@ def calculation_handler(
         data = {key: "Not req" for key in data}
         requested_day = int(config_request_time["calc_request_time_monthly"])
         if check_matched_day(current_timestamp, requested_day):
+            result = fetch_device_data_for_calculation(
+                settings, current_timestamp, relativedelta(months=1)
+            )
             if calc_requested["cost_calc"][1]:
                 cost_calc(
-                    settings,
-                    data,
-                    current_timestamp,
-                    relativedelta(months=1),
+                    settings, data, current_timestamp, relativedelta(months=1), result
                 )
             if calc_requested["power_on_counter"][1]:
                 power_on_calc(
-                    settings, data, current_timestamp, relativedelta(months=1)
+                    settings, data, current_timestamp, relativedelta(months=1), result
                 )
             sf.write_device_information(settings["device_name"] + "_month", data)
 
@@ -430,10 +449,17 @@ def calculation_handler(
             int(requested_day),
             int(requested_month),
         ):
+            result = fetch_device_data_for_calculation(
+                settings, current_timestamp, relativedelta(years=1)
+            )
             if calc_requested["cost_calc"][2]:
-                cost_calc(settings, data, current_timestamp, relativedelta(years=1))
+                cost_calc(
+                    settings, data, current_timestamp, relativedelta(years=1), result
+                )
             if calc_requested["power_on_counter"][2]:
-                power_on_calc(settings, data, current_timestamp, relativedelta(years=1))
+                power_on_calc(
+                    settings, data, current_timestamp, relativedelta(years=1), result
+                )
             sf.write_device_information(settings["device_name"] + "_year", data)
 
 

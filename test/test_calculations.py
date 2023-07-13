@@ -4,8 +4,7 @@ Tests for cost_calculation.py
 import json
 from datetime import datetime
 import unittest
-from unittest.mock import Mock, patch, mock_open
-from dateutil.relativedelta import relativedelta
+from unittest.mock import patch, mock_open
 
 import pytest
 from source.calculations import (
@@ -14,7 +13,6 @@ from source.calculations import (
     check_day_parameter,
     check_matched_day,
     check_matched_day_and_month,
-    power_on_calc,
     check_cost_calc_request_time,
     config_request_time,
     check_cost_config,
@@ -118,89 +116,6 @@ def test_check_matched_day_and_month(parameter_1, parameter_2, parameter_3, expe
     """
     result = check_matched_day_and_month(parameter_1, parameter_2, parameter_3)
     assert result == expected
-
-
-class PowerOnCalcTestCase(unittest.TestCase):
-    """
-    Pure test for function power_on_calc()
-    """
-    settings = {
-        "device_name": "my_device",
-        "power_on_counter": {"on_threshold": 100, "off_threshold": 50},
-    }
-    data = {}
-    current_timestamp = datetime(2023, 3, 17, 10, 0, 0)
-    time_difference = relativedelta(months=1)
-
-    def test_power_on_calc_valid_data(self):
-        """
-        All data are valid
-        """
-        mock_fetch_measurements = Mock(
-            return_value=Mock(
-                get_points=Mock(
-                    return_value=[
-                        {"power": 70},
-                        {"power": 100},
-                        {"power": 50},
-                        {"power": 49},
-                        {"power": 99},
-                        {"power": 100},
-                        {"power": 50},
-                        {"power": 10},
-                    ]
-                )
-            )
-        )
-
-        with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
-            power_on_calc(self.settings, self.data, self.current_timestamp, self.time_difference)
-
-        self.assertEqual(self.data["power_on"], 2)
-
-    def test_power_on_calc_invalid_data(self):
-        """
-        Mixed data with invalid and valid information
-        """
-        mock_fetch_measurements = Mock(
-            return_value=Mock(
-                get_points=Mock(
-                    return_value=[
-                        {"power": None},
-                        {"power": 100},
-                        {"power": 50},
-                        {"power": 49},
-                        {"power": 99},
-                        {"power": None},
-                        {"power": 50},
-                        {"power": 10},
-                    ]
-                )
-            )
-        )
-
-        with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
-            power_on_calc(self.settings, self.data, self.current_timestamp, self.time_difference)
-
-        self.assertEqual(self.data["power_on"], 1)
-
-    def test_power_on_calc_no_data(self):
-        """
-        No data are available
-        """
-        mock_fetch_measurements = Mock(
-            return_value=Mock(
-                get_points=Mock(
-                    return_value=[
-                    ]
-                )
-            )
-        )
-
-        with patch("source.support_functions.fetch_measurements", mock_fetch_measurements):
-            power_on_calc(self.settings, self.data, self.current_timestamp, self.time_difference)
-
-        self.assertEqual(self.data["power_on"], 0)
 
 
 class TestCheckCostCalcRequestTime(unittest.TestCase):

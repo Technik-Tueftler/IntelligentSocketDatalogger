@@ -61,9 +61,9 @@ def get_device_energy_last_period(device: Device) -> float:
     )
 
 
-def write_device_monitoring_values(device: Device) -> None:
+def update_device_monitoring_value_ref(device: Device) -> None:
     """
-    Function to write the reference value of the device in the configuration file
+    Function to write the reference value of the device in the configuration file and object
     :param device: Device for which the update was requested
     :return: None
     """
@@ -77,7 +77,37 @@ def write_device_monitoring_values(device: Device) -> None:
     with open(DEVICES_FILE_PATH, "w", encoding="utf-8") as json_file:
         json.dump(data, json_file, indent=4)
 
-    message = f"Change threshold for {device.name} to value: {energy_wh}wh"
+    message = f"Change reference value for {device.name} to: {energy_wh}wh"
+    com.to_bot.put(com.Response("status", {"output_text": message}))
+
+
+def update_device_monitoring_value_thr(device: Device, threshold: str) -> None:
+    """
+    Function to write the threshold value of the device in the configuration file and object
+    :param device: Device for which the update was requested
+    :param threshold: threshold value which is to be updated
+    :return: None
+    """
+    try:
+        temp = threshold.replace(",", ".")
+        converted_value = round(float(temp), 1)
+        device.threshold_wh = converted_value
+
+        with open(DEVICES_FILE_PATH, "r", encoding="utf-8") as json_file:
+            data = json.load(json_file)
+
+        data[device.name]["energy_alarm"]["threshold_wh"] = converted_value
+
+        with open(DEVICES_FILE_PATH, "w", encoding="utf-8") as json_file:
+            json.dump(data, json_file, indent=4)
+
+        message = f"Change threshold value for {device.name} to: {converted_value}wh"
+
+    except ValueError as err:
+        message = f"Error while updating the threshold with the value " \
+                  f"{threshold} at device {device.name} with {err}"
+        lh.write_log(lh.LoggingLevel.ERROR.value, message)
+
     com.to_bot.put(com.Response("status", {"output_text": message}))
 
 
@@ -88,9 +118,6 @@ def run_monitoring(device: Device) -> None:
     :return: None
     """
     energy_wh = get_device_energy_last_period(device)
-
-    log_message = f"EM: {device.name} / {energy_wh} >= {device.threshold_wh}"
-    lh.write_log(lh.LoggingLevel.INFO.value, log_message)
 
     if energy_wh >= device.threshold_wh:
         com.to_bot.put(
@@ -136,15 +163,21 @@ def handle_communication() -> None:
     """
     while not com.to_energy_mon.empty():
         req = com.to_energy_mon.get()
-        if req.command == "set_alarm":
-            device_name = req.data["device"]
-            device_for_changing = next(
-                filter(lambda device: device.name == device_name, observed_devices),
-                None,
-            )
-            if device_for_changing is None:
-                continue
-            write_device_monitoring_values(device_for_changing)
+        match req.command:
+            case "showalarmref" | "setalarmthr":
+                device_name = req.data["device"]
+                device_for_changing = next(
+                    filter(lambda device: device.name == device_name, observed_devices),
+                    None,
+                )
+                if device_for_changing is None:
+                    continue
+                if req.command == "showalarmref":
+                    update_device_monitoring_value_ref(device_for_changing)
+                else:
+                    update_device_monitoring_value_thr(
+                        device_for_changing, req.data["threshold"]
+                    )
 
 
 def main() -> None:
