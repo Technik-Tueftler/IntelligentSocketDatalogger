@@ -391,6 +391,13 @@ def get_updates() -> list:
             "- Connection to telegram api generates an error.",
         )
         return messages
+    except KeyError as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            f"- Key Error during get_updates with error: {err}",
+        )
+        return messages
 
 
 def set_commands() -> None:
