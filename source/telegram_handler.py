@@ -6,6 +6,7 @@ All functions to operate the features for the telegram bot.
 import os
 import json
 import re
+import copy
 from collections import namedtuple
 import requests
 from source import logging_helper as lh
@@ -17,7 +18,7 @@ from source.constants import (
     DEFAULT_INLINE_KEYS_COLUMNS,
     DEFAULT_BOT_UPDATE_TIME,
     DEFAULT_BOT_REQUEST_HANDLE_TIME,
-    USER_MESSAGE_INLINE_KEYBOARD_SET_ALARM,
+    USER_MESSAGE_INLINE_KEYBOARD_DEVICE,
     NUM_IS_INT_OR_FLOAT_MATCH,
 )
 
@@ -70,7 +71,7 @@ def send_inline_keyboard_for_set_alarm(command, devices: list) -> None:
     Function to create and send the inline keyboard to show all devices
     based on the adjustable display settings.
     :param command: Requested command from user
-    :param devices: All configured devices for energy monitor
+    :param devices: All configured devices for energy monitor from class Device
     :return:
     """
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -88,7 +89,7 @@ def send_inline_keyboard_for_set_alarm(command, devices: list) -> None:
             temp_list.append(temp_dict)
         inline_keyboard.append(temp_list)
 
-    user_message = USER_MESSAGE_INLINE_KEYBOARD_SET_ALARM
+    user_message = USER_MESSAGE_INLINE_KEYBOARD_DEVICE
     payload = {
         "chat_id": CHAT_ID,
         "text": user_message,
@@ -115,24 +116,33 @@ def pull_messages() -> None:
         return
     for message in messages:
         if isinstance(message, Message):
-            match message.text.lower().strip():
-                case "/start":
-                    start(message.chat_id)
-                case "/status":
-                    com.to_main.put(com.Request("status"))
-                case "/devices":
-                    com.to_main.put(com.Request("devices"))
-                case "/setalarmref":
-                    com.to_main.put(com.Request("setalarmref"))
-                case "/setalarmthr":
-                    com.to_main.put(com.Request("setalarmthr"))
-                case msg if open_requests["value_setalarmthr"] is not None:
-                    match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, msg)
+            cleaned_message = message.text.lower().strip().replace("/", "")
+            if cleaned_message == "start":
+                start(message.chat_id)
+            elif cleaned_message == "status":
+                com.to_main.put(com.Request("status"))
+            elif cleaned_message == "runningdevices":
+                return_string = "\n".join(com.shared_information["started_devices"])
+                send_message(return_string)
+            elif cleaned_message == "observeddevices":
+                named_observed_devices = [device.name for device in com.shared_information["observed_devices"]]
+                return_string = "\n".join(named_observed_devices)
+                send_message(return_string)
+            elif cleaned_message in ("setalarmref", "setalarmthr", "energydevice"):
+                copy_observed_devices = copy.deepcopy(com.shared_information["observed_devices"])
+                send_inline_keyboard_for_set_alarm(
+                    cleaned_message, copy_observed_devices
+                )
+            else:
+                if open_requests["value_setalarmthr"] is not None:
+                    match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, cleaned_message)
                     device = open_requests["value_setalarmthr"]
                     if match is None:
-                        user_message = f"Invalid Number format to set threshold of device " \
-                                       f"{device} to. You will have to run /setalarmthr again " \
-                                       f"to retry."
+                        user_message = (
+                            f"Invalid Number format to set threshold of device "
+                            f"{device} to. You will have to run /setalarmthr again "
+                            f"to retry."
+                        )
                         send_message(user_message)
                         open_requests["value_setalarmthr"] = None
                     else:
@@ -144,20 +154,21 @@ def pull_messages() -> None:
                         )
                         open_requests["value_setalarmthr"] = None
         elif isinstance(message, Callback):
-            match message.action:
-                case "setalarmref":
-                    com.to_energy_mon.put(
-                        com.Request(
-                            command="showalarmref",
-                            data={"device": message.value["device"]},
-                        )
+            if message.action in ("setalarmref", "energydevice"):
+                com.to_energy_mon.put(
+                    com.Request(
+                        command=message.action,
+                        data={"device": message.value["device"]},
                     )
-                case "setalarmthr":
-                    device = message.value["device"]
-                    open_requests["value_setalarmthr"] = device
-                    user_message = f"Write the threshold for device {device} " \
-                                   f"as an float (e.g. 50.0)"
-                    send_message(user_message)
+                )
+            elif message.action == "setalarmthr":
+                device = message.value["device"]
+                open_requests["value_setalarmthr"] = device
+                user_message = (
+                    f"Write the threshold for device {device} "
+                    f"as an float (e.g. 50.0)"
+                )
+                send_message(user_message)
 
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
@@ -398,6 +409,13 @@ def get_updates() -> list:
             f"- Key Error during get_updates with error: {err}",
         )
         return messages
+    except requests.exceptions.ReadTimeout as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- An error has occurred when reading via the telegram API.",
+        )
+        return messages
 
 
 def set_commands() -> None:
@@ -410,11 +428,16 @@ def set_commands() -> None:
     commands = [
         {"command": "/start", "description": "Initialization off the app"},
         {"command": "/status", "description": "Get current status of ISDL"},
-        {"command": "/devices", "description": "Get all running devices"},
+        {"command": "/runningdevices", "description": "Get all running devices"},
+        {"command": "/observeddevices", "description": "Get all observed devices"},
         {"command": "/setalarmthr", "description": "Set threshold for power alarm"},
         {
             "command": "/setalarmref",
             "description": "Set reference value of energy from last period",
+        },
+        {
+            "command": "/energydevice",
+            "description": "Get energy of device from last period",
         },
     ]
 
