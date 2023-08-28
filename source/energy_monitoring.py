@@ -18,9 +18,6 @@ from source.constants import (
 )
 
 
-observed_devices = []
-
-
 @dataclass
 class Device:
     """
@@ -31,6 +28,43 @@ class Device:
     reference_wh_last_period: int
     threshold_wh: int
     period_min: int
+
+
+def get_device_energy_overview(device: str) -> list:
+    """
+    Function return the energy values for interesting periods.
+    :param device: Device name
+    :return: list with values
+    """
+    current_timestamp = datetime.utcnow()
+    energy_overview_table = [
+        [timedelta(minutes=3), 0, "Last  3 minutes:"],
+        [timedelta(minutes=15), 0, "Last 15 minutes:"],
+        [timedelta(hours=1), 0, "Last  3 hours:"],
+        [timedelta(hours=12), 0, "Last 12 hours:"],
+        [timedelta(days=1), 0, "Last  day:"],
+    ]
+    for entry in energy_overview_table:
+        start_date = current_timestamp - entry[0]
+        start_date_format = start_date.strftime("%Y-%m-%d %H:%M:%S")
+        end_date = current_timestamp
+        end_date_format = end_date.strftime("%Y-%m-%d %H:%M:%S")
+        result = sf.fetch_measurements(
+            {
+                "device": device,
+                "target_date": start_date_format,
+                "current_date": end_date_format,
+            }
+        )
+        entry[1] = round(
+            sum(
+                measurement["energy_wh"]
+                for measurement in result.get_points()
+                if measurement["fetch_success"]
+            ),
+            2,
+        )
+        return energy_overview_table
 
 
 def get_device_energy_last_period(device: Device) -> float:
@@ -104,8 +138,10 @@ def update_device_monitoring_value_thr(device: Device, threshold: str) -> None:
         message = f"Change threshold value for {device.name} to: {converted_value}wh"
 
     except ValueError as err:
-        message = f"Error while updating the threshold with the value " \
-                  f"{threshold} at device {device.name} with {err}"
+        message = (
+            f"Error while updating the threshold with the value "
+            f"{threshold} at device {device.name} with {err}"
+        )
         lh.write_log(lh.LoggingLevel.ERROR.value, message)
 
     com.to_bot.put(com.Response("status", {"output_text": message}))
@@ -146,7 +182,7 @@ def check_monitoring_requested(started_devices: list) -> None:
         ref_wh = device_energy_alarm.get(
             "reference_wh_last_period", DEFAULT_REFERENCE_WH
         )
-        observed_devices.append(
+        com.shared_information["observed_devices"].append(
             Device(
                 name=device,
                 reference_wh_last_period=ref_wh,
@@ -163,21 +199,28 @@ def handle_communication() -> None:
     """
     while not com.to_energy_mon.empty():
         req = com.to_energy_mon.get()
-        match req.command:
-            case "showalarmref" | "setalarmthr":
-                device_name = req.data["device"]
-                device_for_changing = next(
-                    filter(lambda device: device.name == device_name, observed_devices),
-                    None,
+        if req.command in ("setalarmref", "setalarmthr"):
+            device_name = req.data["device"]
+            device_for_changing = next(
+                filter(
+                    lambda device: device.name == device_name,
+                    com.shared_information["observed_devices"],
+                ),
+                None,
+            )
+            if device_for_changing is None:
+                continue
+            if req.command == "setalarmref":
+                update_device_monitoring_value_ref(device_for_changing)
+            elif req.command == "setalarmthr":
+                update_device_monitoring_value_thr(
+                    device_for_changing, req.data["threshold"]
                 )
-                if device_for_changing is None:
-                    continue
-                if req.command == "showalarmref":
-                    update_device_monitoring_value_ref(device_for_changing)
-                else:
-                    update_device_monitoring_value_thr(
-                        device_for_changing, req.data["threshold"]
-                    )
+        elif req.command in "energydevice":
+            energy_data = get_device_energy_overview(req.data["device"])
+            output = [element[2] + f" {element[1]} wh" for element in energy_data]
+            return_string = "\n".join(output)
+            com.to_bot.put(com.Response("status", {"output_text": return_string}))
 
 
 def main() -> None:

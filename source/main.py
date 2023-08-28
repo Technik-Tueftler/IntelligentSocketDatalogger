@@ -23,7 +23,6 @@ from source import energy_monitoring as em
 from source.constants import DEVICES_FILE_PATH
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
-started_devices = []
 
 
 def fetch_device_data(settings: dict) -> None:
@@ -74,20 +73,8 @@ def handle_communication() -> None:
     """
     while not com.to_main.empty():
         req = com.to_main.get()
-        match req.command:
-            case "status":
-                com.to_bot.put(
-                    com.Response("status", {"output_text": "App is running"})
-                )
-            case "devices":
-                return_string = "\n".join(started_devices)
-                com.to_bot.put(com.Response("devices", {"output_text": return_string}))
-            case "setalarmref" | "setalarmthr":
-                com.to_bot.put(
-                    com.Response(
-                        req.command, {"device_list": em.observed_devices.copy()}
-                    )
-                )
+        if req.command == "status":
+            com.to_bot.put(com.Response("status", {"output_text": "App is running"}))
 
 
 def main() -> None:
@@ -108,9 +95,9 @@ def main() -> None:
                     "watch_hen": lh.WatchHen(device_name=device_name),
                 }
                 schedule.every(settings["update_time"]).seconds.do(
-                   fetch_device_data, device_settings
+                    fetch_device_data, device_settings
                 )
-                started_devices.append(device_name)
+                com.shared_information["started_devices"].append(device_name)
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
                 support_functions.validation_power_on_parameter(
@@ -135,8 +122,8 @@ def main() -> None:
             ).seconds.do(handle_communication)
             th.send_message(message)
             # Start energy monitoring for each device
-            em.check_monitoring_requested(started_devices)
-            for device in em.observed_devices:
+            em.check_monitoring_requested(com.shared_information["started_devices"])
+            for device in com.shared_information["observed_devices"]:
                 schedule.every(device.period_min).minutes.do(em.run_monitoring, device)
             schedule.every(
                 th.verified_bot_connection["bot_request_handle_time"]

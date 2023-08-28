@@ -12,6 +12,8 @@ to_main = Queue()
 to_bot = Queue()
 to_energy_mon = Queue()
 
+shared_information = {"started_devices": [], "observed_devices": []}
+
 
 @dataclass
 class Response:
