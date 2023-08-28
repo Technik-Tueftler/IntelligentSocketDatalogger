@@ -130,9 +130,7 @@ def handle_message_input(message: Message) -> None:
         copy_observed_devices = copy.deepcopy(
             com.shared_information["observed_devices"]
         )
-        send_inline_keyboard_for_set_alarm(
-            cleaned_message, copy_observed_devices
-        )
+        send_inline_keyboard_for_set_alarm(cleaned_message, copy_observed_devices)
     else:
         if open_requests["value_setalarmthr"] is not None:
             match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, cleaned_message)
@@ -172,8 +170,7 @@ def handle_callback_input(callback: Callback) -> None:
         device = callback.value["device"]
         open_requests["value_setalarmthr"] = device
         user_message = (
-            f"Write the threshold for device {device} "
-            f"as an float (e.g. 50.0)"
+            f"Write the threshold for device {device} " f"as an float (e.g. 50.0)"
         )
         send_message(user_message)
 

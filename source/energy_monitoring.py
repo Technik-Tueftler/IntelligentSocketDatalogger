@@ -38,11 +38,11 @@ def get_device_energy_overview(device: str) -> list:
     """
     current_timestamp = datetime.utcnow()
     energy_overview_table = [
-        [timedelta(minutes=3) , 0, "Last  3 minutes:"],
+        [timedelta(minutes=3), 0, "Last  3 minutes:"],
         [timedelta(minutes=15), 0, "Last 15 minutes:"],
-        [timedelta(hours=1)   , 0, "Last  3 hours:"],
-        [timedelta(hours=12)  , 0, "Last 12 hours:"],
-        [timedelta(days=1)   , 0,  "Last  day:"],
+        [timedelta(hours=1), 0, "Last  3 hours:"],
+        [timedelta(hours=12), 0, "Last 12 hours:"],
+        [timedelta(days=1), 0, "Last  day:"],
     ]
     for entry in energy_overview_table:
         start_date = current_timestamp - entry[0]

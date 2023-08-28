@@ -22,6 +22,7 @@ class DataApp:  # pylint: disable=too-many-instance-attributes
     """
     Class to structure all environment variables and verify them.
     """
+
     db_ip_address: str = os.getenv("DB_IP_ADDRESS")
     db_user_name: str = os.getenv("DB_USER_NAME")
     db_user_password: str = os.getenv("DB_USER_PASSWORD", "")

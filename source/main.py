@@ -94,9 +94,9 @@ def main() -> None:
                     "device_name": device_name,
                     "watch_hen": lh.WatchHen(device_name=device_name),
                 }
-                # schedule.every(settings["update_time"]).seconds.do(
-                #     fetch_device_data, device_settings
-                # )
+                schedule.every(settings["update_time"]).seconds.do(
+                    fetch_device_data, device_settings
+                )
                 com.shared_information["started_devices"].append(device_name)
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
