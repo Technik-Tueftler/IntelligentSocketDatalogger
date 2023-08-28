@@ -106,7 +106,79 @@ def send_inline_keyboard_for_set_alarm(command, devices: list) -> None:
         )
 
 
-def pull_messages() -> None:
+def handle_message_input(message: Message) -> None:
+    """
+    Handle the message from type Message and call further actions.
+    :param message: Message from user input.
+    :return: None
+    """
+    cleaned_message = message.text.lower().strip().replace("/", "")
+    if cleaned_message == "start":
+        start(message.chat_id)
+    elif cleaned_message == "status":
+        com.to_main.put(com.Request("status"))
+    elif cleaned_message == "runningdevices":
+        return_string = "\n".join(com.shared_information["started_devices"])
+        send_message(return_string)
+    elif cleaned_message == "observeddevices":
+        named_observed_devices = [
+            device.name for device in com.shared_information["observed_devices"]
+        ]
+        return_string = "\n".join(named_observed_devices)
+        send_message(return_string)
+    elif cleaned_message in ("setalarmref", "setalarmthr", "energydevice"):
+        copy_observed_devices = copy.deepcopy(
+            com.shared_information["observed_devices"]
+        )
+        send_inline_keyboard_for_set_alarm(
+            cleaned_message, copy_observed_devices
+        )
+    else:
+        if open_requests["value_setalarmthr"] is not None:
+            match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, cleaned_message)
+            device = open_requests["value_setalarmthr"]
+            if match is None:
+                user_message = (
+                    f"Invalid Number format to set threshold of device "
+                    f"{device} to. You will have to run /setalarmthr again "
+                    f"to retry."
+                )
+                send_message(user_message)
+                open_requests["value_setalarmthr"] = None
+            else:
+                com.to_energy_mon.put(
+                    com.Request(
+                        command="setalarmthr",
+                        data={"device": device, "threshold": match.group()},
+                    )
+                )
+                open_requests["value_setalarmthr"] = None
+
+
+def handle_callback_input(callback: Callback) -> None:
+    """
+    Handle the message from type callback and call further actions.
+    :param callback: Callback from user input.
+    :return: None
+    """
+    if callback.action in ("setalarmref", "energydevice"):
+        com.to_energy_mon.put(
+            com.Request(
+                command=callback.action,
+                data={"device": callback.value["device"]},
+            )
+        )
+    elif callback.action == "setalarmthr":
+        device = callback.value["device"]
+        open_requests["value_setalarmthr"] = device
+        user_message = (
+            f"Write the threshold for device {device} "
+            f"as an float (e.g. 50.0)"
+        )
+        send_message(user_message)
+
+
+def pull_messages() -> None:  # [too-many-branches]
     """
     This function handles the messages and schedule the next
     steps based on the input.
@@ -116,59 +188,10 @@ def pull_messages() -> None:
         return
     for message in messages:
         if isinstance(message, Message):
-            cleaned_message = message.text.lower().strip().replace("/", "")
-            if cleaned_message == "start":
-                start(message.chat_id)
-            elif cleaned_message == "status":
-                com.to_main.put(com.Request("status"))
-            elif cleaned_message == "runningdevices":
-                return_string = "\n".join(com.shared_information["started_devices"])
-                send_message(return_string)
-            elif cleaned_message == "observeddevices":
-                named_observed_devices = [device.name for device in com.shared_information["observed_devices"]]
-                return_string = "\n".join(named_observed_devices)
-                send_message(return_string)
-            elif cleaned_message in ("setalarmref", "setalarmthr", "energydevice"):
-                copy_observed_devices = copy.deepcopy(com.shared_information["observed_devices"])
-                send_inline_keyboard_for_set_alarm(
-                    cleaned_message, copy_observed_devices
-                )
-            else:
-                if open_requests["value_setalarmthr"] is not None:
-                    match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, cleaned_message)
-                    device = open_requests["value_setalarmthr"]
-                    if match is None:
-                        user_message = (
-                            f"Invalid Number format to set threshold of device "
-                            f"{device} to. You will have to run /setalarmthr again "
-                            f"to retry."
-                        )
-                        send_message(user_message)
-                        open_requests["value_setalarmthr"] = None
-                    else:
-                        com.to_energy_mon.put(
-                            com.Request(
-                                command="setalarmthr",
-                                data={"device": device, "threshold": match.group()},
-                            )
-                        )
-                        open_requests["value_setalarmthr"] = None
+            handle_message_input(message)
+
         elif isinstance(message, Callback):
-            if message.action in ("setalarmref", "energydevice"):
-                com.to_energy_mon.put(
-                    com.Request(
-                        command=message.action,
-                        data={"device": message.value["device"]},
-                    )
-                )
-            elif message.action == "setalarmthr":
-                device = message.value["device"]
-                open_requests["value_setalarmthr"] = device
-                user_message = (
-                    f"Write the threshold for device {device} "
-                    f"as an float (e.g. 50.0)"
-                )
-                send_message(user_message)
+            handle_callback_input(message)
 
         if message.message_id > verified_bot_connection["last_received_message"]:
             verified_bot_connection["last_received_message"] = message.message_id
