@@ -1,10 +1,10 @@
 {
     "Kuehlschrank": {
         "type": "shelly:plug-s",
-        "ip": "192.168.178.209",
-        "update_time": 10,
+        "ip": "192.168.178.202",
+        "update_time": 30,
         "cost_calculation": {
-            "daily": true,
+            "daily": false,
             "monthly": true,
             "yearly": true
         },
@@ -12,14 +12,17 @@
             "daily": true,
             "monthly": true,
             "yearly": true,
-            "on_threshold": 2,
-            "off_threshold": 1
+            "on_threshold": 50,
+            "off_threshold": 2
         },
         "energy_alarm": {
             "active": true,
-            "reference_wh_last_period": 0,
+            "reference_wh_last_period": 3.37,
             "period_min": 30,
-            "threshold_wh": 99.9
+            "threshold_wh": 50.0
+        },
+        "switch": {
+          "active": false
         }
     },
     "Waermepumpe": {
@@ -37,6 +40,35 @@
             "yearly": true,
             "on_threshold": 50,
             "off_threshold": 2
+        },
+        "switch": {
+          "active": false
+        }
+    },
+    "Entfeuchter": {
+        "type": "shelly:plug-s",
+        "ip": "192.168.178.209",
+        "update_time": 10,
+        "cost_calculation": {
+            "daily": false,
+            "monthly": false,
+            "yearly": false
+        },
+        "power_on_counter": {
+            "daily": false,
+            "monthly": false,
+            "yearly": false,
+            "on_threshold": 20,
+            "off_threshold": 5
+        },
+        "energy_alarm": {
+            "active": true,
+            "reference_wh_last_period": 151.93,
+            "period_min": 30,
+            "threshold_wh": 175.0
+        },
+        "switch": {
+          "active": true
         }
     }
 }

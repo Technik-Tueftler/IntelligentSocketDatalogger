@@ -6,7 +6,6 @@ to the user if necessary.
 """
 import json
 from datetime import datetime, timedelta
-from dataclasses import dataclass
 from source import communication as com
 import source.support_functions as sf
 import source.logging_helper as lh
@@ -16,18 +15,6 @@ from source.constants import (
     DEFAULT_ALARM_PERIOD_MIN,
     DEFAULT_REFERENCE_WH,
 )
-
-
-@dataclass
-class Device:
-    """
-    A device that has been registered for monitoring
-    """
-
-    name: str
-    reference_wh_last_period: int
-    threshold_wh: int
-    period_min: int
 
 
 def get_device_energy_overview(device: str) -> list:
@@ -64,10 +51,10 @@ def get_device_energy_overview(device: str) -> list:
             ),
             2,
         )
-        return energy_overview_table
+    return energy_overview_table
 
 
-def get_device_energy_last_period(device: Device) -> float:
+def get_device_energy_last_period(device: com.Device) -> float:
     """
     Calculate the energy of the device for the last period.
     :param device: Device for which the calculation run
@@ -95,7 +82,7 @@ def get_device_energy_last_period(device: Device) -> float:
     )
 
 
-def update_device_monitoring_value_ref(device: Device) -> None:
+def update_device_monitoring_value_ref(device: com.Device) -> None:
     """
     Function to write the reference value of the device in the configuration file and object
     :param device: Device for which the update was requested
@@ -115,7 +102,7 @@ def update_device_monitoring_value_ref(device: Device) -> None:
     com.to_bot.put(com.Response("status", {"output_text": message}))
 
 
-def update_device_monitoring_value_thr(device: Device, threshold: str) -> None:
+def update_device_monitoring_value_thr(device: com.Device, threshold: str) -> None:
     """
     Function to write the threshold value of the device in the configuration file and object
     :param device: Device for which the update was requested
@@ -147,7 +134,7 @@ def update_device_monitoring_value_thr(device: Device, threshold: str) -> None:
     com.to_bot.put(com.Response("status", {"output_text": message}))
 
 
-def run_monitoring(device: Device) -> None:
+def run_monitoring(device: com.Device) -> None:
     """
     Checks whether a device exceeds the limit values in the set time period
     :param device: Device to be checked
@@ -183,7 +170,7 @@ def check_monitoring_requested(started_devices: list) -> None:
             "reference_wh_last_period", DEFAULT_REFERENCE_WH
         )
         com.shared_information["observed_devices"].append(
-            Device(
+            com.Device(
                 name=device,
                 reference_wh_last_period=ref_wh,
                 threshold_wh=thr_wh,
