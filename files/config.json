@@ -15,6 +15,6 @@
   },
   "switch":
   {
-    "device_switch_status_update_time": 10
+    "device_switch_status_update_time": 60
   }
 }

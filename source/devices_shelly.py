@@ -13,20 +13,6 @@ from source.communication import SwitchDevice
 from source.logging_helper import WatchHen
 
 
-def switch_status(settings: dict) -> bool:
-    try:
-        if settings["type"] == "shelly:plug-s":
-            request_url = "http://" + settings["ip"] + "/relay/0"
-            with urllib.request.urlopen(
-                    request_url, timeout=TIMEOUT_RESPONSE_TIME
-            ) as url:
-                data = json.loads(url.read().decode())
-            return data["ison"]
-        return False
-    except (HTTPError, URLError, ConnectionResetError, TimeoutError) as err:
-        return False
-
-
 def setup(plugins) -> None:
     """
     Configuration function to register all possible shelly devices in a
@@ -147,7 +133,7 @@ def setup(plugins) -> None:
     @plugins.register("shelly:plug-s:switch-status")
     def handler(device: SwitchDevice, watcher: WatchHen):  # pylint: disable=function-redefined
         try:
-            request_url = "http://" + device.ip + "/relay/0"
+            request_url = "http://" + device.ip_address + "/relay/0"
             with urllib.request.urlopen(request_url, timeout=10) as url:
                 data = json.loads(url.read().decode())
                 return data["ison"]
@@ -161,15 +147,15 @@ def setup(plugins) -> None:
 
     @plugins.register("shelly:plug-s:switch-off")
     def handler(device: SwitchDevice, watcher: WatchHen):  # pylint: disable=function-redefined
-        request_url = "http://" + device.ip + "/relay/0"
+        request_url = "http://" + device.ip_address + "/relay/0"
         data = urllib.parse.urlencode({"turn": "off"}).encode("utf-8")
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         req = urllib.request.Request(request_url, data, headers)
 
         try:
-            response = urllib.request.urlopen(req, timeout=10)
-            _ = response.read()
+            with urllib.request.urlopen(req, timeout=10) as req:
+                _ = req.read()
         except urllib.error.URLError as err:
             watcher.failure_processing(
                 type(err).__name__,
@@ -179,15 +165,15 @@ def setup(plugins) -> None:
 
     @plugins.register("shelly:plug-s:switch-on")
     def handler(device: SwitchDevice, watcher: WatchHen):  # pylint: disable=function-redefined
-        request_url = "http://" + device.ip + "/relay/0"
+        request_url = "http://" + device.ip_address + "/relay/0"
         data = urllib.parse.urlencode({"turn": "on"}).encode("utf-8")
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         req = urllib.request.Request(request_url, data, headers)
 
         try:
-            response = urllib.request.urlopen(req, timeout=10)
-            _ = response.read()
+            with urllib.request.urlopen(req, timeout=10) as req:
+                _ = req.read()
         except urllib.error.URLError as err:
             watcher.failure_processing(
                 type(err).__name__,

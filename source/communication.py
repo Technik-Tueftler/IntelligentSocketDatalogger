@@ -27,7 +27,7 @@ class SwitchDevice:
 
     name: str
     type: str
-    ip: str
+    ip_address: str
     status: bool
 
 

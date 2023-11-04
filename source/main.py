@@ -95,9 +95,9 @@ def main() -> None:
                     "device_name": device_name,
                     "watch_hen": lh.WatchHen(device_name=device_name),
                 }
-                # schedule.every(settings["update_time"]).seconds.do(
-                #     fetch_device_data, device_settings
-                # )
+                schedule.every(settings["update_time"]).seconds.do(
+                    fetch_device_data, device_settings
+                )
                 com.shared_information["started_devices"].append(device_name)
             calc_requested = cc.check_calc_requested(settings)
             if calc_requested["start_schedule_task"] is True:
@@ -130,12 +130,8 @@ def main() -> None:
             schedule.every(
                 th.verified_bot_connection["bot_request_handle_time"]
             ).seconds.do(em.handle_communication)
-        # Switch functionality
-        sw.check_switch_mode_requested(com.shared_information["started_devices"])
-        print(com.shared_information["switchable_devices"])
-        schedule.every(
-            th.verified_bot_connection["device_switch_status_update_time"]
-        ).seconds.do(sw.handle_switch_information, com.shared_information["switchable_devices"])
+            # Switch functionality
+            sw.check_switch_mode_requested(com.shared_information["started_devices"])
         while True:
             schedule.run_pending()
             time.sleep(1)

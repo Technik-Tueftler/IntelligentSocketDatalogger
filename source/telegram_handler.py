@@ -11,7 +11,7 @@ from collections import namedtuple
 import requests
 from source import logging_helper as lh
 from source import communication as com
-from source.switch import get_switch_information_for_user
+from source.switch import get_switch_information_for_user, toggle_switch, handle_switch_information
 from source.constants import (
     CONFIGURATION_FILE_PATH,
     CHAT_ID_FILE_PATH,
@@ -192,8 +192,10 @@ def handle_message_input(message: Message) -> None:
         )
         send_inline_keyboard_for_set_alarm(cleaned_message, copy_observed_devices)
     elif cleaned_message == "switchstatus":
+        handle_switch_information(com.shared_information["switchable_devices"])
         send_message(get_switch_information_for_user())
     elif cleaned_message in ("switchon", "switchoff"):
+        handle_switch_information(com.shared_information["switchable_devices"])
         copy_switchable_devices = copy.deepcopy(
             com.shared_information["switchable_devices"]
         )
@@ -242,11 +244,14 @@ def handle_callback_input(callback: Callback) -> None:
         )
         send_message(user_message)
     elif callback.action in ("switchoff", "switchon"):
-        # ToDo: Hier geht es weiter
-        print(callback.value["device"] + " / " + callback.action)
+        state = False
+        if callback.action == "switchon":
+            state = True
+        status_information = toggle_switch(callback.value["device"], state)
+        send_message(status_information)
 
 
-def pull_messages() -> None:  # [too-many-branches]
+def pull_messages() -> None:
     """
     This function handles the messages and schedule the next
     steps based on the input.
