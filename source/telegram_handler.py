@@ -11,6 +11,7 @@ from collections import namedtuple
 import requests
 from source import logging_helper as lh
 from source import communication as com
+from source.switch import get_switch_information_for_user, toggle_switch, handle_switch_information
 from source.constants import (
     CONFIGURATION_FILE_PATH,
     CHAT_ID_FILE_PATH,
@@ -20,6 +21,9 @@ from source.constants import (
     DEFAULT_BOT_REQUEST_HANDLE_TIME,
     USER_MESSAGE_INLINE_KEYBOARD_DEVICE,
     NUM_IS_INT_OR_FLOAT_MATCH,
+    DEVICE_SWITCH_STATUS_UPDATE_TIME,
+    USER_MESSAGE_INLINE_KEYBOARD_SWITCH_DEVICE_OFF,
+    USER_MESSAGE_INLINE_KEYBOARD_SWITCH_DEVICE_ON,
 )
 
 TOKEN = os.getenv("TB_TOKEN", "")
@@ -42,6 +46,7 @@ verified_bot_connection = {
     "bot_update_time": DEFAULT_BOT_UPDATE_TIME,
     "bot_request_handle_time": DEFAULT_BOT_REQUEST_HANDLE_TIME,
     "inline_keys_columns": DEFAULT_INLINE_KEYS_COLUMNS,
+    "device_switch_status_update_time": DEVICE_SWITCH_STATUS_UPDATE_TIME
 }
 
 
@@ -106,6 +111,61 @@ def send_inline_keyboard_for_set_alarm(command, devices: list) -> None:
         )
 
 
+def send_inline_keyboard_for_switch_device(command, devices: list) -> None:
+    """
+    Function to create and send the inline keyboard to show all switchable devices
+    based on the adjustable display settings.
+    :param command: Requested command from user
+    :param devices: All configured devices for switch feature from class SwitchDevice
+    :return: None
+    """
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    inline_keyboard = []
+    legal_devices_for_switch = []
+    for device in devices:
+        status = device.status
+        if status and command == "switchoff":
+            legal_devices_for_switch.append(device)
+        elif not status and command == "switchon":
+            legal_devices_for_switch.append(device)
+    if not legal_devices_for_switch:
+        if command == "switchoff":
+            send_message("All devices are off, none of them can be switched off.")
+        else:
+            send_message("All devices are on, none of them can be switched on.")
+        return
+    while devices:
+        temp_list = []
+        for _ in range(verified_bot_connection["inline_keys_columns"]):
+            if not devices:
+                break
+            device = devices.pop()
+            temp_dict = {
+                "text": device.name,
+                "callback_data": json.dumps({"action": command, "device": device.name}),
+            }
+            temp_list.append(temp_dict)
+        inline_keyboard.append(temp_list)
+    if command == "switchoff":
+        user_message = USER_MESSAGE_INLINE_KEYBOARD_SWITCH_DEVICE_OFF
+    else:
+        user_message = USER_MESSAGE_INLINE_KEYBOARD_SWITCH_DEVICE_ON
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": user_message,
+        "reply_markup": {"inline_keyboard": inline_keyboard},
+    }
+    try:
+        _ = requests.post(url, json=payload, timeout=TIMEOUT_RESPONSE_TIME)
+
+    except requests.exceptions.ConnectTimeout as err:
+        telegrambot_watcher.failure_processing(
+            type(err).__name__,
+            err,
+            "- Connection to telegram api timed out during send inline.",
+        )
+
+
 def handle_message_input(message: Message) -> None:
     """
     Handle the message from type Message and call further actions.
@@ -131,6 +191,16 @@ def handle_message_input(message: Message) -> None:
             com.shared_information["observed_devices"]
         )
         send_inline_keyboard_for_set_alarm(cleaned_message, copy_observed_devices)
+    elif cleaned_message == "switchstatus":
+        handle_switch_information(com.shared_information["switchable_devices"])
+        send_message(get_switch_information_for_user())
+    elif cleaned_message in ("switchon", "switchoff"):
+        handle_switch_information(com.shared_information["switchable_devices"])
+        copy_switchable_devices = copy.deepcopy(
+            com.shared_information["switchable_devices"]
+        )
+        send_inline_keyboard_for_switch_device(cleaned_message, copy_switchable_devices)
+
     else:
         if open_requests["value_setalarmthr"] is not None:
             match = re.search(NUM_IS_INT_OR_FLOAT_MATCH, cleaned_message)
@@ -173,9 +243,15 @@ def handle_callback_input(callback: Callback) -> None:
             f"Write the threshold for device {device} " f"as an float (e.g. 50.0)"
         )
         send_message(user_message)
+    elif callback.action in ("switchoff", "switchon"):
+        state = False
+        if callback.action == "switchon":
+            state = True
+        status_information = toggle_switch(callback.value["device"], state)
+        send_message(status_information)
 
 
-def pull_messages() -> None:  # [too-many-branches]
+def pull_messages() -> None:
     """
     This function handles the messages and schedule the next
     steps based on the input.
@@ -353,6 +429,18 @@ def check_and_verify_bot_config() -> None:
         if isinstance(value_inline_keys_columns, int):
             verified_bot_connection["inline_keys_columns"] = value_inline_keys_columns
 
+    if "switch" not in data:
+        message = (
+            "Configuration for device switch functionality is missing in config.json, "
+            "the default values are now adopted"
+        )
+        lh.write_log(lh.LoggingLevel.ERROR.value, message)
+        return
+    if "device_switch_status_update_time" in data["switch"]:
+        value_inline_keys_columns = data["switch"]["device_switch_status_update_time"]
+        if isinstance(value_inline_keys_columns, int):
+            verified_bot_connection["device_switch_status_update_time"] = value_inline_keys_columns
+
 
 def check_and_verify_bot_connection() -> None:
     """
@@ -459,6 +547,9 @@ def set_commands() -> None:
             "command": "/energydevice",
             "description": "Get energy of device from last period",
         },
+        {"command": "/switchstatus", "description": "Show the switch status of devices"},
+        {"command": "/switchoff", "description": "Turn off a device"},
+        {"command": "/switchon", "description": "Turn on a device"},
     ]
 
     payload = {"commands": commands}

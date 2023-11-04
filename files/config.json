@@ -12,5 +12,9 @@
     "chat_id_source": "auto",
     "update_time": 10,
     "inline_keys_columns": 3
+  },
+  "switch":
+  {
+    "device_switch_status_update_time": 60
   }
 }

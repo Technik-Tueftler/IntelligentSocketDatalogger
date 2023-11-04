@@ -12,7 +12,35 @@ to_main = Queue()
 to_bot = Queue()
 to_energy_mon = Queue()
 
-shared_information = {"started_devices": [], "observed_devices": []}
+shared_information = {
+    "started_devices": [],
+    "observed_devices": [],
+    "switchable_devices": [],
+}
+
+
+@dataclass
+class SwitchDevice:
+    """
+    A device that has been registered for switch functionality
+    """
+
+    name: str
+    type: str
+    ip_address: str
+    status: bool
+
+
+@dataclass
+class Device:
+    """
+    A device that has been registered for monitoring
+    """
+
+    name: str
+    reference_wh_last_period: int
+    threshold_wh: int
+    period_min: int
 
 
 @dataclass

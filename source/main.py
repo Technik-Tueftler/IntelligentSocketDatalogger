@@ -20,9 +20,12 @@ from source import logging_helper as lh
 from source import telegram_handler as th
 from source import communication as com
 from source import energy_monitoring as em
+from source import switch as sw
 from source.constants import DEVICES_FILE_PATH
 
 write_watch_hen = lh.WatchHen(device_name="write_handler")
+timestamp_now = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S")
+start_message = f"Start Program: {timestamp_now} UTC"
 
 
 def fetch_device_data(settings: dict) -> None:
@@ -113,6 +116,7 @@ def main() -> None:
         # Start Telegram-Bot and send message
         th.check_and_verify_bot_connection()
         if th.verified_bot_connection["verified"]:
+            th.check_and_verify_bot_config()
             th.set_commands()
             schedule.every(th.verified_bot_connection["bot_update_time"]).seconds.do(
                 th.schedule_bot
@@ -120,7 +124,6 @@ def main() -> None:
             schedule.every(
                 th.verified_bot_connection["bot_request_handle_time"]
             ).seconds.do(handle_communication)
-            th.send_message(message)
             # Start energy monitoring for each device
             em.check_monitoring_requested(com.shared_information["started_devices"])
             for device in com.shared_information["observed_devices"]:
@@ -128,6 +131,11 @@ def main() -> None:
             schedule.every(
                 th.verified_bot_connection["bot_request_handle_time"]
             ).seconds.do(em.handle_communication)
+            # Switch functionality
+            sw.check_switch_mode_requested(com.shared_information["started_devices"])
+            # Finish initialization and start
+            th.send_message(start_message)
+        lh.write_log(lh.LoggingLevel.INFO.value, start_message)
         while True:
             schedule.run_pending()
             time.sleep(1)
@@ -140,9 +148,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    timestamp_now = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S")
-    message = f"Start Program: {timestamp_now} UTC"
     support_functions.check_and_verify_db_connection()
     if support_functions.login_information.verified is not False:
-        lh.write_log(lh.LoggingLevel.INFO.value, message)
         main()

@@ -154,3 +154,38 @@ It is possible to create your own implementation to include your own smart socke
 2. Write a separate handler for each device and assign a type via the decorator. Here you can specify your own name. This type is then what you specify in the device.conf for the device as the type.  
 3. The code under `def handler` must then contain the addressing of the device, the processing and at the end return the data in the required format.
 Simply follow the example contained in the template file. If something is unclear or poorly defined, please be sure to write to me.  
+
+# App Schedule
+```mermaid
+graph TB
+    subgraph main [main]
+        B[check DB connection] ---> |successful| C((Main))
+        C --> loop1{All devices}
+        loop1 --> D[["Start fetch data
+        for device"]]
+        D --> E[check calc requested]
+        E --> |not requested| loop1
+        E --> |requested| F[["Start calculation
+        for each device"]]
+        F --> loop1
+        loop1 --> |all devices| G[check bot connection]
+        G --> |successful| H[Start bot]
+        H --> I[Start communication]
+        I --> loop2{All devices}
+        loop2 --> J[monitor requested]
+        J --> |not requested| loop2
+        J -->|requested| K[[Start device
+        monitoring]]
+        K --> loop2
+    end
+    D --> sd
+    G --> |failed| Y
+    K --> md
+    subgraph app [app]
+    A((Start App)) -->B[check DB connection]
+    sd>started devices] --> db[(shared data)]
+    md>monitored devices] --> db[(shared data)]
+    B --->|failed| Z((End App))
+    Y((schedule))
+    end
+```
