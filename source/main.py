@@ -135,8 +135,8 @@ def main() -> None:
             sw.check_switch_mode_requested(com.shared_information["started_devices"])
             # Finish initialization and start
             th.send_message(start_message)
+        lh.write_log(lh.LoggingLevel.INFO.value, start_message)
         while True:
-            lh.write_log(lh.LoggingLevel.INFO.value, start_message)
             schedule.run_pending()
             time.sleep(1)
     except FileNotFoundError as err:
