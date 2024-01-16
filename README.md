@@ -19,6 +19,10 @@ Via a plugin concept, you can include any socket by writing your own handler and
 ## Additional functions
 `Cost calculation:` Writes the total work in KWh for the required period and calculates the total cost.  
 `Power on counter:` Counts how often a device switches on for the required time period.  
+`Telegram-Bot: `All functions can be displayed and controlled via a chat in Telegram.
+`Energy observation:` Checks if a device consumes more energy than previously set. For example, if the refrigerator is open.
+`Display energy:` Display of the energy of the devices from the last periods
+`Switching devices:` Switching devices on and off if the socket allows this.
 
 ## Installation and execution
 1. Locally the program runs by executing the `main.py`. Currently, care must still be taken to load the environment variables into the IDE or environment. To do this, simply copy the repository and run main.py. The program was tested and developed under Python 3.10.
@@ -67,10 +71,16 @@ In order to adapt the project to the own conceptions, two configuration files ar
   "general":
   {
     "log_level": "info",
-    "calc_request_time_daily": "00:00",
-    "calc_request_time_monthly": "01",
-    "calc_request_time_yearly": "01.01",
+    "calc_request_time_daily": "13:16",
+    "calc_request_time_monthly": "07",
+    "calc_request_time_yearly": "09.07",
     "price_kwh": 0.296
+  },
+  "telegrambot":
+  {
+    "chat_id_source": "auto",
+    "update_time": 10,
+    "inline_keys_columns": 3
   }
 }
 ````
@@ -79,6 +89,11 @@ In order to adapt the project to the own conceptions, two configuration files ar
 `calc_request_time_monthly:` Specifies the day in the month on which the set reports are to be started monthly. The default setting is the first of the month.  
 `calc_request_time_yearly:` Specifies the day and month in the year on which the set reports are to be started annually. The default setting is 01.01.  
 `price_kwh:` Indicates the price per kilowatt-hour. The default price is 0.30€.  
+`chat_id_source:` How the chat ID is stored. There are *auto* and *manual* settings. More information below. 
+`update_time:` Update time where the bot checks new messages.
+`inline_keys_columns:` Specifies how many device names are displayed in a line in the chat.
+
+
 
 ### devices.json
 ````commandline 
@@ -102,9 +117,19 @@ In order to adapt the project to the own conceptions, two configuration files ar
       "yearly": false,
       "on_threshold": 2,
       "off_threshold": 1
+    },
+    "energy_alarm": {
+        "active": true,
+        "reference_wh_last_period": 151.93,
+        "period_min": 30,
+        "threshold_wh": 175.0
+    },
+    "switch": {
+        "active": true
     }
   }
 }
+
 ````
 `washing machine:` Device name, which is recorded.  
 `type:` The type of intelligent socket. Currently, only __shelly:plug-s__ and __shelly:3em__ are supported by default.
@@ -124,9 +149,9 @@ This function counts how often a device switches on during the day, month and ye
 
 ```mermaid
 graph LR
-B((Aus))
-B-->|größer on_threshold|C((An))
-C-->|kleiner off_threshold|B
+B((Off))
+B-->|greater than on_threshold|C((On))
+C-->|smaller than off_threshold|B
 ```
 
 ### ISDL Config Editor

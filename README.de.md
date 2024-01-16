@@ -19,6 +19,10 @@ IntelligentSocketDatalogger ist eine App, welche in einzel einstellbaren Zeitint
 ## Auflistung Zusatzfunktionen
 `Kostenzusammenfassung:` Gibt die Gesamtarbeit in KWh für den geforderten Zeitraum aus und berechnet die Gesamtkosten.  
 `Einschaltzähler:` Zählt wie häufig sich ein Gerät, für den geforderten Zeitraum, einschaltet.  
+`Telegram-Bot: ` Alle Funktionen können über einen Chat in Telegram angezeigt und gesteuert werden.
+`Elek. Arbeit Warnung:` Kontrolliert, wenn ein Gerät mehr elekt. Arbeit hat als vorher eingestellt. Als Beispiel, wenn der Kühlschrank offen ist.
+`Energieanzeige:` Anzeige der elekt. Arbeit der Geräte aus den letzten Perioden
+`Geräte schalten:` Ein- und Ausschalten von Geräten, wenn die Steckdose das zulässt.
 
 ## Installation und Ausführung
 1. Lokal läuft das Programm durch Ausführen der `main.py`. Aktuell muss noch darauf geachtet werden, dass die Umgebungsvariablen in die IDE oder in die Umgebung geladen werden. Hierzu einfach das Repository kopieren und die main.py starten. Getestet und entwickelt wurde das Programm unter Python 3.10.
@@ -73,6 +77,12 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
     "calc_request_time_monthly": "01",
     "calc_request_time_yearly": "01.01",
     "price_kwh": 0.296
+  },
+  "telegrambot":
+  {
+    "chat_id_source": "auto",
+    "update_time": 10,
+    "inline_keys_columns": 3
   }
 }
 ````
@@ -81,6 +91,9 @@ Um das Projekt an die eigenen Vorstellungen anzupassen, stehen zwei Konfiguratio
 `calc_request_time_monthly:` Gibt den Tag im Monat an, an dem die eingestellten Auswertungen monatlich gestartet werden sollen. Die Standardeinstellung ist der erste eines Monats.  
 `calc_request_time_yearly:` Gibt den Tag und Monat im Jahr an, an dem die eingestellten Auswertungen jährlich gestartet werden soll. Die Standardeinstellung ist der 01.01.  
 `price_kwh:` Gibt den Preis pro Kilowattstunde an. Der Standardwert ist 0.30€.  
+`chat_id_source:` Wie die Chat-ID abgelegt wird. Es gibt *auto* und *manuel* als Einstellung. Weitere Informationen weiter unten. 
+`update_time:` Update-Zeit bei der Bot auf neue Nachrichten prüft.
+`inline_keys_columns:` Gibt an wie viele Gerätenamen in einer Zeile im Chat angezeigt werden.
 
 ### devices.json
 ````commandline 
@@ -150,3 +163,38 @@ Es ist möglich, eine eigene Implementierung zu erstellen um eine beliebige inte
 2. Schreiben Sie für jedes Gerät einen eigenen Handler und weisen Sie über den Dekorator einen Typ zu. Hier können Sie Ihren eigenen Namen angeben. Dieser Typ ist dann das, was Sie in der device.conf für das Gerät als Typ angeben.  
 3. Der Code unter `def handler` muss dann die Anfrage ans Geräte, die Verarbeitung und am Ende die Rückgabe der Daten im gewünschten Format enthalten.  
 Hier einfach dem Beispiel folgen, welches in der Template Datai enthalten ist. Wenn etwas unklar oder schlecht definiert ist, bitte unbedingt mir schreiben.  
+
+# App Funktionsablauf
+```mermaid
+graph TB
+    subgraph main [main]
+        B[prüfe DB Verbindung] ---> |erfolgreich| C((Main))
+        C --> loop1{Alle Geräte}
+        loop1 --> D[["Starte fetch data
+        für alle Geräte"]]
+        D --> E[Prüfe ob Berechnung eingestellt]
+        E --> |nicht eingestellt| loop1
+        E --> |eingestellt| F[["Starte Berechnung
+        für jedes Gerät"]]
+        F --> loop1
+        loop1 --> |alle Geräte| G[Prüfe Bot Verbindung]
+        G --> |erfolgreich| H[Starte bot]
+        H --> I[Starte Kommunikation]
+        I --> loop2{Alle geräte}
+        loop2 --> J[Überwachung eingestellt]
+        J --> |nicht eingestellt| loop2
+        J -->|eingestellt| K[[Starte
+        Geräteüberwachung]]
+        K --> loop2
+    end
+    D --> sd
+    G --> |failed| Y
+    K --> md
+    subgraph app [app]
+    A((Starte App)) -->B[prüfe DB Verbindung]
+    sd>Gestartete Geräte] --> db[(gemeinsame Daten)]
+    md>Überwachte Geräte] --> db[(gemeinsame Daten)]
+    B --->|fehlgeschlagen| Z((Ende App))
+    Y((schedule))
+    end
+```
